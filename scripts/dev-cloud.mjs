@@ -9,7 +9,7 @@ function stop() {
   for (const child of children) if (!child.killed) child.kill('SIGINT');
 }
 for (const [script, args] of [
-  ['node_modules/wrangler/bin/wrangler.js', ['dev', '--config', 'worker/wrangler.jsonc', '--env', 'development', '--port', '8787']],
+  ['node_modules/wrangler/bin/wrangler.js', ['dev', '--config', 'worker/wrangler.jsonc', '--port', '8787']],
   ['node_modules/vite/bin/vite.js', ['--host', '127.0.0.1', ...process.argv.slice(2)]],
 ]) {
   const child = spawn(process.execPath, [script, ...args], { cwd: root, stdio: 'inherit', windowsHide: true });

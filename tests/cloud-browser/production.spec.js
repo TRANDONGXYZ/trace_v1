@@ -141,8 +141,8 @@ test('real cloud Vietnamese analysis works through the production API without Ol
   await page.screenshot({ path: 'test-results/cloud-live-production.png' });
 });
 
-test('public deployment has its private API binding, restrictive security headers, no tracking beacon, and live input guards', async ({ request, baseURL }) => {
-  test.skip(!process.env.TRACE_TEST_PUBLIC_URL, 'Requires actual Pages response headers and service bindings.');
+test('public deployment has its AI binding, restrictive security headers, no tracking beacon, and live input guards', async ({ request, baseURL }) => {
+  test.skip(!process.env.TRACE_TEST_PUBLIC_URL, 'Requires actual Worker response headers and AI binding.');
   const status = await request.get('/api/ai/status');
   expect(status.status()).toBe(200);
   expect(await status.json()).toEqual({ provider: 'cloudflare', available: true, cancellation: 'best-effort' });
@@ -151,6 +151,9 @@ test('public deployment has its private API binding, restrictive security header
   expect(html.headers()['content-security-policy']).toContain("connect-src 'self'");
   expect(await html.text()).not.toContain('static.cloudflareinsights.com');
   const origin = new URL(baseURL).origin;
+  const unknown = await request.get('/api/unknown', { headers: { Accept: 'text/html', 'Sec-Fetch-Mode': 'navigate' } });
+  expect(unknown.status()).toBe(404);
+  expect(unknown.headers()['content-type']).toContain('application/json');
   const invalid = await request.post('/api/ai/profile', { headers: { Origin: origin }, data: { text: 'Public security check', model: 'arbitrary-model' } });
   expect(invalid.status()).toBe(400);
   const foreign = await request.post('/api/ai/profile', { headers: { Origin: 'https://foreign.example' }, data: { text: 'Public security check' } });

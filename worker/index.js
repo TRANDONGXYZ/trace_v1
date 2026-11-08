@@ -15,8 +15,7 @@ function allowedOrigin(origin, env) {
     const url = new URL(origin);
     if (env.LOCAL_DEVELOPMENT === 'true' && url.protocol === 'http:' &&
       ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname) && url.origin === origin) return true;
-    const host = `${env.PAGES_PROJECT_NAME}.pages.dev`;
-    return url.protocol === 'https:' && (url.hostname === host || url.hostname.endsWith(`.${host}`)) && url.origin === origin;
+    return url.protocol === 'https:' && url.origin === env.SITE_ORIGIN && url.origin === origin;
   } catch { return false; }
 }
 
@@ -46,8 +45,7 @@ export default {
     if (request.method !== 'POST') return json({ error: { code: 'method_not_allowed', message: 'Use POST for AI tasks.' } }, 405, { Allow: 'POST' });
     let ownsSlot = false, client;
     try {
-      // The private Worker is reached through the Pages service binding. The
-      // proxy overwrites the IP header using Cloudflare's connection metadata.
+      // site.js overwrites the IP header using Cloudflare connection metadata.
       if (!allowedOrigin(request.headers.get('origin'), env)) throw apiError(403, 'origin_not_allowed', 'AI requests must come from this website.');
       if (env.AI_ENABLED !== 'true') throw apiError(503, 'ai_disabled', 'AI analysis is temporarily unavailable. The whiteboard remains usable.');
       if (!env.AI || !env.CLIENT_RATE_LIMIT || !env.SITE_RATE_LIMIT) throw apiError(503, 'not_configured', 'The AI service is not configured yet. The whiteboard remains usable.');

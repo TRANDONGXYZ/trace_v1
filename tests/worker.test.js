@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import worker from '../worker/index.js';
-import { onRequest } from '../functions/api/ai/[[path]].js';
+import site from '../worker/site.js';
+import fs from 'node:fs/promises';
 import { CLOUD_EMBEDDING_MODEL, CLOUD_REASONING_MODEL, CLOUD_EMBEDDING_DIMENSIONS } from '../shared/ai-models.js';
 
-const origin = 'https://trace-whiteboard.pages.dev';
+const origin = 'https://trace.trandongxzy.workers.dev';
 const profile = { mechanism: 'overvalued_goal', priority_quote: 'approval', priority_label: 'approval', behavior_label: 'Overworking for approval', priority_domain: 'approval_acceptance' };
 const input = { cluster: { label: 'Performance', count: 2, first: '01/10/26', last: '02/10/26' }, mode: 'explain', partial: false,
   records: [{ id: 'R1', date: '01/10/26', text: 'Ignored rest to maintain results.', part: '1/1' }, { id: 'R2', date: '02/10/26', text: 'Ignored technique to preserve performance.', part: '1/1' }], observations: [] };
@@ -14,7 +15,7 @@ const request = (task, body, { source = origin, ip = '203.0.113.12', signal, hea
 });
 function environment(run) {
   const calls = [], rateKeys = [];
-  return { calls, rateKeys, PAGES_PROJECT_NAME: 'trace-whiteboard', AI_ENABLED: 'true', LOCAL_DEVELOPMENT: 'false',
+  return { calls, rateKeys, SITE_ORIGIN: origin, AI_ENABLED: 'true', LOCAL_DEVELOPMENT: 'false',
     CLIENT_RATE_LIMIT: { limit: async ({ key }) => { rateKeys.push(key); return { success: true }; } }, SITE_RATE_LIMIT: { limit: async () => ({ success: true }) },
     AI: { run: async (...args) => { calls.push(args); return run ? run(...args) : { choices: [{ message: { content: JSON.stringify(profile) }, finish_reason: 'stop' }] }; } } };
 }
@@ -45,7 +46,7 @@ test('backend accepts only the fixed multilingual embedding model and correct ve
 
 test('hostile origins, arbitrary models/prompts/options, unknown tasks, invalid JSON and oversize bodies never invoke AI', async () => {
   const env = environment();
-  for (const source of ['https://evil.example', 'https://trace-whiteboard.pages.dev.evil.example', 'http://trace-whiteboard.pages.dev', 'null']) {
+  for (const source of ['https://evil.example', `${origin}.evil.example`, 'http://trace.trandongxzy.workers.dev', 'https://trace-whiteboard.pages.dev', 'https://preview-trace.trandongxzy.workers.dev', 'null']) {
     assert.equal((await worker.fetch(request('profile', { text: 'approval' }, { source }), env)).status, 403);
   }
   for (const [task, body] of [['profile', { text: 'approval', model: 'expensive' }], ['profile', { text: 'approval', options: { max_tokens: 100000 } }],
@@ -135,10 +136,44 @@ test('free-allowance errors stay generic, expose no user text or upstream secret
   assert.deepEqual(await status.json(), { provider: 'cloudflare', available: true, cancellation: 'best-effort' });
 });
 
-test('Pages proxy overwrites the client identity, preserves cancellation, and needs no token in browser code', async () => {
-  const controller = new AbortController(); let forwarded;
-  const response = await onRequest({ request: request('profile', { text: 'approval' }, { signal: controller.signal,
-    headers: { 'cf-connecting-ip': '203.0.113.21', 'x-trace-client-ip': 'spoofed' } }), env: { TRACE_AI: { fetch: async req => { forwarded = req; return new Response('ok'); } } } });
-  assert.equal(response.status, 200); assert.equal(forwarded.headers.get('x-trace-client-ip'), '203.0.113.21');
-  controller.abort(); assert.equal(forwarded.signal.aborted, true);
+test('public Worker derives rate-limit identity from Cloudflare, rejects spoofing, and propagates cancellation to AI', async () => {
+  const controller = new AbortController(); let started, aiSignal;
+  const ready = new Promise(resolve => { started = resolve; });
+  const env = environment(async (_model, _input, { signal }) => {
+    aiSignal = signal; started();
+    return new Promise((_resolve, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }));
+  });
+  const pending = site.fetch(request('profile', { text: 'approval' }, { signal: controller.signal,
+    headers: { 'cf-connecting-ip': '203.0.113.21', 'x-trace-client-ip': 'spoofed' } }), env);
+  await ready;
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('203.0.113.21'));
+  assert.equal(env.rateKeys[0], [...new Uint8Array(digest)].map(byte => byte.toString(16).padStart(2, '0')).join(''));
+  controller.abort(); assert.equal((await pending).status, 499); assert.equal(aiSignal.aborted, true);
+  assert.equal((await site.fetch(request('profile', { text: 'approval' }, { headers: { 'x-trace-client-ip': 'spoofed' } }), env)).status, 403);
+});
+
+test('public Worker routes known AI requests, rejects unknown APIs, and keeps static requests out of inference', async () => {
+  const env = environment(); let assetCalls = 0;
+  env.ASSETS = { fetch: async () => { assetCalls++; return new Response('website'); } };
+  assert.equal(await (await site.fetch(new Request(`${origin}/`), env)).text(), 'website');
+  assert.equal(assetCalls, 1); assert.equal(env.calls.length, 0);
+  for (const path of ['/api', '/api/typo', '/api/ai']) {
+    const response = await site.fetch(new Request(`${origin}${path}`), env);
+    assert.equal(response.status, 404); assert.equal(response.headers.get('Content-Type'), 'application/json');
+  }
+  assert.equal(assetCalls, 1);
+  assert.equal((await site.fetch(new Request(`${origin}/api/ai/status`), env)).status, 200);
+  assert.equal(env.calls.length, 0);
+});
+
+test('production Wrangler config preserves the existing Worker, assets routing, bindings and disabled development origins', async () => {
+  const config = JSON.parse(await fs.readFile(new URL('../wrangler.jsonc', import.meta.url), 'utf8'));
+  assert.equal(config.name, 'trace'); assert.equal(config.main, './worker/site.js');
+  assert.equal(config.workers_dev, true); assert.equal(config.preview_urls, false);
+  assert.equal(config.vars.SITE_ORIGIN, origin); assert.equal(config.vars.LOCAL_DEVELOPMENT, 'false');
+  assert.equal(config.pages_build_output_dir, undefined); assert.equal(config.services, undefined);
+  assert.equal(config.assets.directory, './dist'); assert.equal(config.assets.binding, 'ASSETS');
+  assert.deepEqual(config.assets.run_worker_first, ['/api', '/api/*']);
+  assert.equal(config.assets.not_found_handling, 'single-page-application');
+  assert.equal(config.ai.binding, 'AI'); assert.equal(config.ratelimits.length, 2);
 });

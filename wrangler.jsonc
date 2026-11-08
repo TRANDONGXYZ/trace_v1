@@ -1,9 +1,24 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "trace-whiteboard",
+  "name": "trace",
+  "account_id": "51878879655da64260dff719142aac04",
   "send_metrics": false,
-  "pages_build_output_dir": "./dist",
+  "main": "./worker/site.js",
   "compatibility_date": "2026-11-08",
   "compatibility_flags": ["enable_request_signal"],
-  "services": [{ "binding": "TRACE_AI", "service": "trace-ai" }]
+  "workers_dev": true,
+  "preview_urls": false,
+  "observability": { "enabled": false },
+  "assets": {
+    "directory": "./dist",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    "run_worker_first": ["/api", "/api/*"]
+  },
+  "ai": { "binding": "AI", "remote": true },
+  "vars": { "SITE_ORIGIN": "https://trace.trandongxzy.workers.dev", "AI_ENABLED": "true", "LOCAL_DEVELOPMENT": "false" },
+  "ratelimits": [
+    { "name": "CLIENT_RATE_LIMIT", "namespace_id": "170801", "simple": { "limit": 20, "period": 60 } },
+    { "name": "SITE_RATE_LIMIT", "namespace_id": "170802", "simple": { "limit": 60, "period": 60 } }
+  ]
 }
