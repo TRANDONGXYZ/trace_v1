@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { buildProgressReport, comparisonPeriods, periodLabel } from './progress-analytics.js';
 import { explainProgress, explanationJobs } from './progress-explanations.js';
 import { formatDate } from './model.js';
+import { CLOUD_AI } from './ai-config.js';
 
 const changeText = change => change > 0 ? `${change} more` : change < 0 ? `${-change} fewer` : 'No change';
 const rangeText = range => range ? `${formatDate(range.first)} – ${formatDate(range.last)}` : 'None recorded';
@@ -79,13 +80,13 @@ export function ProgressAnalytics({ nodes, edges, clusters, clusteringError }) {
     <RecordedOutcomes title="Recent successes and milestones" entries={report.achievements} empty="No Success or Milestone nodes recorded recently." />
     <RecordedOutcomes title="Recent blocked situations and attempted Actions" entries={report.blocked} empty="No Blocked nodes recorded recently." />
     <RecordedOutcomes title="Recent consequences" entries={report.consequences} empty="No Consequence nodes recorded recently." showActions={false} />
-    <section className="progress-section possible-explanations" aria-label="Possible local explanations"><h2>Possible explanations · local LLM</h2>
+    <section className="progress-section possible-explanations" aria-label={CLOUD_AI ? 'Possible explanations' : 'Possible local explanations'}><h2>Possible explanations · {CLOUD_AI ? 'AI' : 'local LLM'}</h2>
       <p>Each analysis looks for a shared psychological or behavioral motivation across a recurring Mistake cluster with recent activity, using all its recorded occurrences up to today, including older history. Hypotheses are plausible interpretations, not established facts or diagnoses. Inspect the cited mistakes before drawing conclusions.</p>
       {clusters === null ? <p>{clusteringError ? 'Cluster explanations are unavailable until mistake clustering succeeds.' : 'Waiting for mistake clusters before psychological analysis…'}</p>
         : !hasTargets ? <p>No recurring Mistake clusters with recent activity to interpret. At least two recorded mistakes in a cluster are needed.</p>
-          : <button type="button" className="explain-button" disabled={running} onClick={interpret}>{running ? 'Analyzing mistake clusters…' : 'Explain recent patterns locally'}</button>}
-      {running && <><button type="button" onClick={cancel}>Cancel</button><p role="status">Analyzing shared patterns locally. Cancel or close this popup to stop the inference request.</p></>}
-      {explanation?.cancelled && <p role="status">Analysis canceled. Any completed, validated cluster explanations remain available.</p>}
+          : <button type="button" className="explain-button" disabled={running} onClick={interpret}>{running ? 'Analyzing mistake clusters…' : CLOUD_AI ? 'Explain recent patterns' : 'Explain recent patterns locally'}</button>}
+      {running && <><button type="button" onClick={cancel}>Cancel</button><p role="status">Analyzing shared patterns. Cancel or close this popup to cancel the request.</p></>}
+      {explanation?.cancelled && <p role="status">Analysis canceled. Any completed, validated cluster explanations remain available. {CLOUD_AI && 'Cloud inference cancellation is best effort; immediate release of provider resources cannot be guaranteed.'}</p>}
       {explanation?.error && <p role="alert">{explanation.error}</p>}
       {!!explanation?.warnings?.length && <p role="alert">Some cluster explanations could not be completed. The valid results below are still available. {explanation.warnings.join(' ')}</p>}
       {explanation?.findings && (!explanation.findings.length ? (!running && !explanation.cancelled && !explanation.error && !explanation.warnings?.length && <p>The model found insufficient evidence for a shared psychological explanation. No causes have been assumed.</p>) : <ul className="local-findings">{explanation.findings.map((finding, index) => <li key={index}>

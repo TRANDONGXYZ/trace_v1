@@ -4,12 +4,20 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
+    "dev": "node scripts/dev-cloud.mjs",
+    "dev:frontend": "vite --host 127.0.0.1",
+    "dev:ollama": "vite --host 127.0.0.1 --mode ollama",
+    "dev:worker": "wrangler dev --config worker/wrangler.jsonc --env development --port 8787",
+    "deploy:worker": "wrangler deploy --config worker/wrangler.jsonc",
+    "deploy:pages": "wrangler pages deploy dist --project-name trace-whiteboard --branch main",
+    "check:worker": "wrangler deploy --dry-run --config worker/wrangler.jsonc",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "node --test tests/model.test.js tests/clustering.test.js tests/progress.test.js tests/cluster-explanations.test.js tests/local-chat.test.js",
+    "test": "node --test tests/model.test.js tests/clustering.test.js tests/progress.test.js tests/cluster-explanations.test.js tests/local-chat.test.js tests/worker.test.js tests/cloud-client.test.js",
+    "test:cloud": "node tests/cloud-live.mjs",
     "test:ollama": "node --test tests/ollama.test.js",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "test:production": "playwright test --config playwright.cloud.config.js"
   },
   "dependencies": {
     "@xyflow/react": "^12.9.3",
@@ -18,6 +26,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.56.1",
-    "vite": "^6.4.1"
+    "vite": "^6.4.1",
+    "wrangler": "^4.158.0"
   }
 }

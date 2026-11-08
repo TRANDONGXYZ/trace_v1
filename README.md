@@ -1,15 +1,16 @@
-# Trace: local timeline whiteboard
+# Trace: timeline whiteboard
 
-Functional React Flow prototype for Windows 11. No account or server database is required.
+React Flow whiteboard with browser-local diagrams and optional Cloudflare AI analysis. Public URL: **https://trace-whiteboard.pages.dev**. Visitors need no account, login, database, Ollama installation, or running laptop server. See [DEPLOYMENT.md](DEPLOYMENT.md) for Windows deployment, configuration, updates, testing, privacy and free-tier limits.
 
 ## Start
 
-Double-click **start.cmd** in this folder. It starts the local server and opens your browser at **http://127.0.0.1:5173** (or the next free port). Keep its terminal open while using the app; press Ctrl+C to stop it. The included portable Node.js runtime is used automatically.
+For development, connect your Cloudflare Free account once with `npx wrangler login`, then double-click **start.cmd**. It starts the frontend and local Worker and opens **http://127.0.0.1:5173**. Cloud AI requests use the connected account's free allowance, including during local development. Keep the terminal open; Ctrl+C stops the local processes. The included portable Node.js runtime is used automatically. Public visitors simply use the public URL.
 
-Alternatively, with Node.js 22 or later on your PATH:
+Alternatively, with Node.js 22.12 or later on your PATH:
 
 ```powershell
-npm install
+npm ci
+npx wrangler login
 npm run dev -- --open
 ```
 
@@ -27,16 +28,16 @@ npm run dev -- --open
 - Drag empty canvas to pan; scroll or pinch to zoom. Node bodies remain fixed and cannot be edited. Double-clicking a node highlights its incoming chain without zooming; double-clicking empty canvas keeps the existing zoom behavior.
 - Select a node and press Delete to immediately delete it and all nodes reachable through its outgoing edges. This includes a descendant that also has another incoming connection.
 - Escape cancels the creation dialog or clears selection/the typed command.
-- Click **Mistake overview** to analyze the Mistake nodes and see their recurring patterns. **Clustering model** defaults to **Vietnamese + multilingual — EmbeddingGemma**; the smaller English-only MiniLM remains selectable. The choice is remembered locally. Clusters are ranked by occurrence count; longer, darker bars and larger counts emphasize more frequent mistakes. Expand **View occurrences** to inspect the original text, Description, and dates. Close the overview or press Escape to return to the unchanged diagram.
-- The same overview starts with **Recent progress**: recorded counts for two adjacent two-month periods, recurring mistake date ranges, increasing/new types, achievements and their upstream Actions, blocked situations and attempted Actions, and recent consequences. **Explain recent patterns locally** optionally asks the installed local chat model for cited possibilities and summaries; these appear separately from recorded findings.
+- Click **Mistake overview** to analyze recurring patterns. The public site defaults to the **Vietnamese + multilingual** Qwen3 embedding preset; an English preset is also available. Both use the same fixed Cloudflare embedding model with different calibrated browser grouping thresholds. The choice is remembered locally. Larger, darker bars and larger counts emphasize frequency. Expand **View occurrences** for original text, Description and dates. Close the overview or press Escape to return to the unchanged diagram.
+- **Recent progress** shows recorded counts for adjacent two-month periods, recurring date ranges, increasing/new categories, achievements and upstream Actions, blocked situations and attempted Actions, and consequences. **Explain recent patterns** optionally analyzes deeper psychological motivations shared within recurring Mistake clusters. Results distinguish model summaries of cited evidence from uncertain psychological hypotheses. **Cancel**, Close overview and Escape cancel the active request and suppress late results; cloud inference cancellation is best effort.
 
 The diagram saves automatically to this browser's localStorage **3 seconds after the latest content change**. A small checkmark at the top right confirms a successful save and disappears when content changes again. Reloading or reopening the same local website in the same browser profile restores the saved nodes, edges, positions, and associated data. Panning, zooming, selection, highlighting, and cancelled forms do not save or reset the timer. Pending changes are saved when the 3-second delay completes.
 
-Storage is local to the browser profile and website address (including the port); use the same address when reopening. Clearing browser site data removes the saved diagram. No backend or cloud storage is used. If browser storage is unavailable or full, the diagram remains usable and the checkmark does not confirm unsaved changes.
+Storage is local to the browser profile and website address (including the port). The public URL cannot automatically read diagrams from the old localhost origin; that previous data stays at its old address. Clearing browser site data removes the saved diagram. No cloud database or diagram backup is used. Only relevant text is sent to Cloudflare for requested AI analysis, and the backend does not save diagram content. If browser storage is unavailable/full, the diagram remains usable and the checkmark does not confirm unsaved changes.
 
-## Local mistake clustering
+## Optional local-only Ollama development
 
-Start Ollama and install the default Vietnamese-capable model once:
+The default development and production workflow uses Cloudflare. To retain the previous local-only workflow, run `npm run dev:ollama`. The following model/resource notes apply only to that explicit mode. Start Ollama and install its Vietnamese-capable models once:
 
 ```powershell
 ollama pull embeddinggemma:300m-qat-q4_0
@@ -69,11 +70,11 @@ The app computes totals and differences for Mistake, Success, Milestone, Blocked
 
 Recent achievements and blocked situations show their original text and descriptions, plus recorded directed paths from upstream Actions, including older Actions and paths through intermediate nodes. Merging paths deduplicate Actions; unrelated/downstream Actions and backward-date edges are excluded. Equal-date arrows retain their recorded direction. These paths show recorded associations, not proven causation. A missing path is explicitly reported. Recent consequences retain all original entries and a direct period-count comparison.
 
-**Optional explanations:** Click **Explain recent patterns locally** to reuse the installed `qwen3.5:2b` model used for behavioral profiles. The previous 1.5B model sometimes mixed Chinese into Vietnamese explanations in live checks. Reusing the 2B model avoids adding another reasoning model. It considers each recent Mistake, Blocked, and Consequence entry with recorded upstream context. Causes/blockers are labelled **possible explanations — not confirmed**; consequence summaries are also marked as LLM output for verification. Vietnamese text requests Vietnamese explanations. Counts, trends, dates, and path traces are never delegated to the LLM and remain available even if a model fails.
+**Optional explanations:** The public site's **Explain recent patterns** button uses the private Cloudflare Worker; explicit Ollama mode labels the same action **Explain recent patterns locally** and uses `qwen3.5:2b`. Analysis is now per recurring Mistake cluster, with at least two recorded past/present members and recent activity. It reads all relevant Mistake/Description fields, including older cluster history, to suggest one shared psychological/behavioral hypothesis rather than repeat immediate causes for individual events. Vietnamese evidence requests Vietnamese output. Deterministic counts, dates and connected paths remain available independently.
 
-Requests use CPU-only execution, two threads, a 4096-token context and at most 256 generated tokens, with `keep_alive: 0`. A shared queue/browser lock serializes all local model work. Full text is split into bounded record excerpts; large contexts may yield multiple brief explanations for one event. Context can be partial and unshown links cannot be assumed. All recorded data remains available in the report. [Structured JSON output](https://docs.ollama.com/capabilities/structured-outputs) restricts citations to short R1/R2 references, which the application maps exactly to original node IDs. A focus event is already bound to its task; valid upstream-only evidence no longer fails merely because it omits the focus ID. Unknown references are never guessed or repaired. Evidence is selected before generating explanation text; prompts forbid invented injuries, diagnoses, motives and outcomes. Reference validation checks existence and permitted context, not the truth of every model interpretation, so explanations remain explicitly unconfirmed. No output is added to the diagram.
+Requests are serialized across the app/tabs. Large clusters use bounded collective evidence batches and one final hypothesis, without silently dropping long fields. Short R1/R2 references map exactly to original mistakes; a displayed result must cite at least two distinct in-cluster records. Unrecognized references, malformed output and incomplete generations are rejected. Model summaries and possible motivations remain explicitly unconfirmed; no output is written into the diagram. Cloud limits, server-side safeguards and privacy details are in [DEPLOYMENT.md](DEPLOYMENT.md).
 
-Up to 32 completed explanation chunks are cached in memory for the current browser session, keyed by the exact evidence payload and prompt version. Closing the overview cancels further requests; unchanged explanations can be reused without reloading the model. Missing evidence can produce no explanation rather than an assumed cause. Valid results appear progressively and survive a different chunk's invalid citation or model failure; a separate warning identifies skipped output. Invalid output is not cached. The existing diagram's autosave and selection/viewport behavior are unaffected.
+Up to 32 completed cluster explanations are cached by exact evidence/model/prompt version. Cloud results also persist locally under hashed keys, reducing repeat inference across reloads. Missing evidence yields no assumed cause; an invalid cluster response does not discard other valid results. Cancel preserves completed results and aborts active/queued work. Ollama streams are disconnected and request `keep_alive: 0`; cloud cancellation is propagated to the AI binding without promising immediate GPU release. Diagram autosave, selection and viewport behavior remain separate.
 
 ## Node types
 
@@ -134,6 +135,6 @@ Autosave browser checks use a controlled clock to verify the 3-second debounce a
 
 Clustering checks cover complete-link behavior, vector normalization, counts/labels, full-field chunking, caching, serialization, cancellation, and model failures. Cause regressions use the supplied Vietnamese examples alongside recording errors, missing instruction and recovery counterexamples; they also reject fabricated source passages and keep different goals separate. Browser checks verify cause-aware membership, cached profiles, frequency emphasis, occurrence details, model switching, and unchanged diagram/autosave data. Live checks require Ollama with `all-minilm:22m`, `embeddinggemma:300m-qat-q4_0`, and `qwen3.5:2b` installed. They verify actual English/Vietnamese grouping, the supplied shared-priority cases and negative controls, and model unloading.
 
-Progress checks cover exact period boundaries, calendar arithmetic, trends/counts, directed Action traces, and readonly presentation. Explanation regressions cover UUID aliases, valid upstream-only citations, unknown-reference rejection, progressive results surviving invalid output or service failures, caching and cancellation. Browser checks verify these findings are actually displayed, alongside recorded facts, and exercise a real local `qwen3.5:2b` explanation with automatic unloading. Run live model checks sequentially to avoid concurrent model loads during QA.
+Progress checks cover exact period boundaries, calendar arithmetic, trends/counts, directed Action traces, and readonly presentation. Cluster explanation regressions cover all-field batching, two distinct in-cluster citations, unsupported-output rejection, partial results, persistent cloud caches, and active/queued cancellation. Worker tests verify model/parameter allowlists, request limits, rate/concurrency limits, sanitized errors and cancellation signals. Production checks exercise real Vietnamese cloud analysis, browser-only data, live API guards and public request cancellation. Optional local model checks remain available through `test:ollama`. Run live checks sequentially to avoid unnecessary model loads or cloud quota usage.
 
 React Flow API reference: https://reactflow.dev/api-reference/react-flow

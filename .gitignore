@@ -10,3 +10,6 @@ build/
 !.env.example
 *.log
 .wrangler/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example

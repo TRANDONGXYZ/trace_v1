@@ -2,6 +2,8 @@ import { clusterMistakes, mistakeText, normalizeVector, textChunks } from './mis
 import { DEFAULT_EMBEDDING_MODEL, EMBEDDING_MODELS } from './embedding-models.js';
 import { withLocalOllama } from './local-ollama-queue.js';
 import { behaviorProfiles, behavioralMatches, profileMeaning } from './behavior-patterns.js';
+import { CLOUD_AI } from './ai-config.js';
+import { cloudAI } from './cloud-ai.js';
 
 export const EMBEDDING_MODEL = DEFAULT_EMBEDDING_MODEL;
 export const OLLAMA_URL = 'http://127.0.0.1:11434/api/embed';
@@ -26,6 +28,14 @@ function saveCache(cache, config) {
 
 async function embedBatch(input, signal, model, config) {
   signal?.throwIfAborted();
+  if (CLOUD_AI) {
+    const body = await cloudAI('embed', { texts: input }, signal);
+    if (!Array.isArray(body?.embeddings) || body.embeddings.length !== input.length) throw new Error('The AI service returned incomplete embeddings.');
+    return body.embeddings.map(vector => {
+      if (!Array.isArray(vector) || vector.length !== config.dimensions) throw new Error('The AI service returned unexpected embedding dimensions.');
+      return normalizeVector(vector);
+    });
+  }
   const timeout = AbortSignal.timeout(90_000);
   const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
   let response;
@@ -84,7 +94,14 @@ export async function analyzeMistakes(nodes, { signal, model = EMBEDDING_MODEL }
   return withLocalOllama(async () => {
     const embeddings = await encode(texts, signal, model, config);
     const profiles = await behaviorProfiles(mistakes, signal);
-    const entries = [...profiles].filter(([, profile]) => profile && profileMeaning(profile));
+    const entries = [...profiles].filter(([, profile]) => {
+      if (!profile || !profileMeaning(profile)) return false;
+      if (!CLOUD_AI) return true;
+      if (profile.mechanism === 'unspecified' || (profile.mechanism === 'overvalued_goal' && profile.priority_domain !== 'other')) return false;
+      // A unique cause role has no matching partner, so no short-text model
+      // call is needed. Differing roles are rejected before vector matching.
+      return [...profiles.values()].filter(other => other && other.mechanism === profile.mechanism && other.priority_domain === profile.priority_domain).length > 1;
+    });
     const meanings = await encode(entries.map(([, profile]) => profileMeaning(profile)), signal, model, config);
     const vectors = new Map(entries.map(([text], index) => [text, meanings[index]]));
     const matches = behavioralMatches(profiles, vectors, config.threshold, model);

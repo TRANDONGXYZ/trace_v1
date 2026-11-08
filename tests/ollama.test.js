@@ -54,17 +54,17 @@ test('real multilingual Ollama model groups Vietnamese paraphrases from both fie
 
 test('real local model gives a conditional Vietnamese cluster hypothesis grounded in two mistakes', async () => {
   const nodes = [
-    { id: '7a73181e-c87c-4a58-b2ae-d1ca676ea889', data: { kind: 'Mistake', time: parseDate('14/07/26'), mistake: 'Ham th?nh t?ch m? kh?ng bi?t d?ng l?i ngh? ng?i.', description: '' } },
-    { id: '02471f3c-8711-4ccb-b883-70c0ef78d320', data: { kind: 'Mistake', time: parseDate('15/10/26'), mistake: 'K? thu?t ch?y b? sai m? v?n r?ng ch?y v? s? gi?m th?nh t?ch.', description: '' } },
+    { id: '7a73181e-c87c-4a58-b2ae-d1ca676ea889', data: { kind: 'Mistake', time: parseDate('14/07/26'), mistake: 'Ham thành tích mà không biết dừng lại nghỉ ngơi.', description: '' } },
+    { id: '02471f3c-8711-4ccb-b883-70c0ef78d320', data: { kind: 'Mistake', time: parseDate('15/10/26'), mistake: 'Kỹ thuật chạy bộ sai mà vẫn ráng chạy vì sợ giảm thành tích.', description: '' } },
   ];
-  const clusters = [{ id: 'achievement-cluster', label: 'Ham th?nh t?ch', members: nodes, count: 2 }];
+  const clusters = [{ id: 'achievement-cluster', label: 'Ham thành tích', members: nodes, count: 2 }];
   const report = buildProgressReport(nodes, [], clusters, comparisonPeriods(new Date(2026, 10, 8, 12)));
   const findings = await explainProgress(report);
   assert.equal(findings.length, 1);
   assert.equal(findings[0].clusterId, 'achievement-cluster');
   assert.equal(findings[0].evidenceIds.length, 2);
   assert.ok(findings[0].evidenceIds.every(id => nodes.some(node => node.id === id)));
-  assert.match(findings[0].text, /c? th?|c? l?|d??ng nh?|gi? thuy?t|n?u/iu);
+  assert.match(findings[0].text, /có thể|có lẽ|dường như|giả thuyết|nếu/iu);
   assert.notEqual(findings[0].text, findings[0].observedPattern);
   console.log('Cluster hypothesis:', findings[0].text);
   const running = await (await fetch('http://127.0.0.1:11434/api/ps')).json();

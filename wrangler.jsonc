@@ -1,0 +1,9 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "trace-whiteboard",
+  "send_metrics": false,
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-11-08",
+  "compatibility_flags": ["enable_request_signal"],
+  "services": [{ "binding": "TRACE_AI", "service": "trace-ai" }]
+}

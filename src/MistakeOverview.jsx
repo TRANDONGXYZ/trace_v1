@@ -3,6 +3,7 @@ import { analyzeMistakes } from './ollama.js';
 import { EMBEDDING_MODELS, readModelPreference, saveModelPreference } from './embedding-models.js';
 import { formatDate } from './model.js';
 import { ProgressAnalytics } from './ProgressAnalytics.jsx';
+import { CLOUD_AI } from './ai-config.js';
 
 export function MistakeOverview({ nodes, edges, onClose }) {
   const dialog = useRef(null);
@@ -24,6 +25,7 @@ export function MistakeOverview({ nodes, edges, onClose }) {
   const largest = clusters?.[0]?.count ?? 1;
   return <dialog className="mistake-overview" ref={dialog} onCancel={onClose} aria-labelledby="overview-title">
     <div className="dialog-heading"><h1 id="overview-title">Mistake overview</h1><button type="button" ref={close} className="close-dialog" aria-label="Close overview" onClick={onClose}>×</button></div>
+    {CLOUD_AI && <p>AI analysis sends relevant Mistake and Description text to Cloudflare. Your full diagram stays in this browser; the backend does not save its content.</p>}
     <label htmlFor="clustering-model">Clustering model</label>
     <select id="clustering-model" value={model} onChange={event => {
       setModel(event.target.value); saveModelPreference(event.target.value);
@@ -31,7 +33,7 @@ export function MistakeOverview({ nodes, edges, onClose }) {
     <ProgressAnalytics nodes={nodes} edges={edges} clusters={clusters} clusteringError={error} />
     <h2 className="all-time-title">All-time mistake clusters</h2>
     {error ? <p role="alert">{error} Close and reopen the overview to retry.</p> : clusters === null
-      ? <p role="status">Analyzing mistakes locally…</p>
+      ? <p role="status">{CLOUD_AI ? 'Analyzing mistake patterns…' : 'Analyzing mistakes locally…'}</p>
       : !mistakes.length ? <p>No Mistake nodes yet. Create a Mistake node to see it here.</p>
         : <>
           <p className="overview-summary">{mistakes.length} {mistakes.length === 1 ? 'mistake' : 'mistakes'} · {clusters.length} {clusters.length === 1 ? 'cluster' : 'clusters'}</p>
