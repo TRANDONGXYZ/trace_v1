@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.tools/
+test-results/
+playwright-report/
+*.log
+build/
+.env
+.env.*
+!.env.example
+*.log
+.wrangler/

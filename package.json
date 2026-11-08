@@ -1,0 +1,23 @@
+{
+  "name": "trace-whiteboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1",
+    "test": "node --test tests/model.test.js tests/clustering.test.js tests/progress.test.js tests/cluster-explanations.test.js tests/local-chat.test.js",
+    "test:ollama": "node --test tests/ollama.test.js",
+    "test:browser": "playwright test"
+  },
+  "dependencies": {
+    "@xyflow/react": "^12.9.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.1",
+    "vite": "^6.4.1"
+  }
+}

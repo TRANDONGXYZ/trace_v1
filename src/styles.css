@@ -1,0 +1,93 @@
+* { box-sizing: border-box; }
+html, body, #root { margin: 0; width: 100%; height: 100%; overflow: hidden; }
+body { font-family: Arial, sans-serif; color: #27313d; font-size: 14px; }
+.whiteboard { width: 100%; height: 100%; background: #fcfdff; outline: none; }
+.event-node { width: 160px; height: 64px; position: relative; cursor: pointer; }
+.node-geometry { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+.node-shape { stroke-width: 1.5; }
+.node-detail { fill: none; stroke-width: 1.5; pointer-events: none; }
+.selection-outline { fill: none; stroke: #2459cb; stroke-width: 3; stroke-linejoin: round; opacity: 1; }
+.node-content { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; height: 100%; padding: 4px 8px; }
+.node-content strong { font-size: 12px; line-height: 14px; }
+.node-mistake { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; line-height: 13px; }
+.node-time { font-variant-numeric: tabular-nums; font-size: 10px; line-height: 12px; }
+.mistake .node-content { padding-right: 24px; }
+.action .node-content { padding-inline: 21px; }
+.milestone .node-content { padding-inline: 24px; }
+.blocked .node-content { padding: 27px 25px 1px; gap: 0; }
+.blocked .node-content strong { font-size: 10px; line-height: 11px; }
+.blocked .node-mistake { font-size: 10px; line-height: 12px; }
+.blocked .node-time { line-height: 11px; }
+.goal .node-content { padding: 22px 8px 2px; gap: 0; }
+.success .node-content { padding: 9px 53px; gap: 0; color: #fff; }
+.success .node-content strong { font-size: 11px; line-height: 12px; }
+.success .node-mistake { font-size: 10px; line-height: 11px; }
+.success .node-time { font-size: 9px; line-height: 11px; }
+.react-flow__handle { opacity: 1; pointer-events: all; width: 10px; height: 10px; min-width: 10px; min-height: 10px; background: #fff; border: 1.5px solid #67707c; border-radius: 50%; cursor: crosshair; }
+.react-flow__handle:hover, .react-flow__handle.connectingto { border-color: #2459cb; background: #edf3ff; }
+.edge-label { cursor: pointer; pointer-events: all; }
+.edge-label rect { fill: #fcfdff; stroke: #dde1e7; }
+.edge-label text { fill: #46505d; font-size: 12px; font-weight: 600; }
+.edge-label.highlighted rect { fill: #edf3ff; stroke: #2459cb; }
+.edge-label.highlighted text { fill: #2459cb; }
+.axes { position: absolute; inset: 0; pointer-events: none; z-index: 1100; overflow: hidden; }
+.axis { position: absolute; background: #f5f7fa; color: #586371; font-size: 11px; font-variant-numeric: tabular-nums; }
+.horizontal-axis { bottom: 0; left: 0; right: 0; height: 64px; border-top: 1px solid #d9dfe7; }
+.vertical-axis { left: 0; top: 0; bottom: 64px; width: 64px; border-right: 1px solid #d9dfe7; }
+.horizontal-tick { position: absolute; top: 10px; writing-mode: vertical-rl; line-height: 14px; transform: translateX(-50%); }
+.horizontal-tick::before { content: ''; width: 1px; height: 7px; background: #a5afbb; position: absolute; top: -10px; left: 50%; }
+.vertical-tick { position: absolute; right: 10px; transform: translateY(-50%); white-space: nowrap; }
+.vertical-tick::after { content: ''; position: absolute; right: -10px; top: 50%; width: 6px; height: 1px; background: #a5afbb; }
+.axis-corner { position: absolute; left: 0; bottom: 0; width: 64px; height: 64px; background: #f5f7fa; border-top: 1px solid #d9dfe7; border-right: 1px solid #d9dfe7; }
+.empty-hint { position: absolute; top: 46%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #707b89; pointer-events: none; white-space: nowrap; }
+kbd { font-family: inherit; border: 1px solid #d7dde4; background: #fff; padding: 3px 5px; border-radius: 3px; font-size: 12px; }
+.keyboard-hint { position: absolute; top: 14px; left: 80px; color: #707b89; font-size: 12px; pointer-events: none; }
+.save-confirmation { position: absolute; top: 12px; right: 16px; color: #196b3a; pointer-events: none; }
+.overview-button { position: absolute; top: 8px; right: 50px; padding: 6px 10px; border: 1px solid #c0c8d3; border-radius: 3px; background: #fff; color: #46505d; font: inherit; cursor: pointer; }
+.mistake-overview { width: 720px; max-height: calc(100% - 48px); overflow: auto; }
+.overview-summary { font-size: 17px; font-weight: 600; }
+.overview-hint { color: #6a7584; font-size: 13px; line-height: 1.5; }
+.mistake-clusters { display: grid; gap: 16px; margin-top: 24px; }
+.mistake-cluster { padding: 16px; border: 1px solid #dde1e7; border-radius: 4px; }
+.cluster-heading { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.cluster-heading h2 { font-size: 16px; line-height: 1.4; margin: 0; overflow-wrap: anywhere; }
+.cluster-count { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cluster-count small { font-size: 11px; font-weight: 400; }
+.cluster-bar { height: 22px; margin: 12px 0; background: #f5f0ef; border-radius: 3px; overflow: hidden; }
+.cluster-bar > div { height: 100%; }
+.mistake-cluster summary { cursor: pointer; color: #586371; font-size: 12px; }
+.mistake-cluster ul { list-style: none; padding: 0; margin: 16px 0 0; }
+.mistake-cluster li + li { border-top: 1px solid #e6e9ed; margin-top: 12px; padding-top: 12px; }
+.mistake-cluster li time { display: block; color: #75808e; font-size: 11px; margin-bottom: 4px; }
+.mistake-cluster li strong, .mistake-cluster li p { overflow-wrap: anywhere; font-size: 13px; line-height: 1.5; }
+.mistake-cluster li p { margin: 6px 0 0; white-space: pre-wrap; }
+.progress-analytics { margin-top: 24px; font-size: 13px; line-height: 1.5; }
+.progress-analytics h2, .all-time-title { font-size: 17px; margin: 20px 0 10px; }
+.progress-section { border-top: 1px solid #dde1e7; padding-top: 4px; margin-top: 20px; }
+.analytics-table-wrap { overflow-x: auto; max-width: 100%; }
+.analytics-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; }
+.analytics-table th, .analytics-table td { border-bottom: 1px solid #e6e9ed; padding: 8px; vertical-align: top; overflow-wrap: anywhere; }
+.analytics-table th:first-child { max-width: 210px; }
+.recorded-outcomes, .local-findings { list-style: none; padding: 0; }
+.recorded-outcomes > li, .local-findings > li { border: 1px solid #dde1e7; border-radius: 3px; padding: 12px; margin: 12px 0; overflow-wrap: anywhere; }
+.recorded-outcomes strong, .recorded-outcomes span, .local-findings strong, .local-findings span { display: block; }
+.recorded-outcomes span, .local-findings span, .cluster-date-range { font-size: 11px; color: #6a7584; }
+.recorded-outcomes p, .local-findings p { margin: 6px 0; white-space: pre-wrap; }
+.recorded-outcomes h3 { font-size: 12px; margin-bottom: 6px; }
+.recorded-path { font-size: 11px; color: #6a7584; }
+.explain-button { padding: 8px 12px; border: 1px solid #adb7c4; border-radius: 3px; background: #fff; color: inherit; cursor: pointer; }
+.explain-button:disabled { cursor: wait; color: #75808e; }
+.command { position: absolute; bottom: 86px; left: 50%; transform: translateX(-50%); background: white; border: 1px solid #aeb8c6; padding: 12px 16px; min-width: 150px; display: flex; justify-content: space-between; gap: 50px; }
+.command span { color: #7c8796; font-size: 12px; }
+dialog { padding: 24px; border: 1px solid #c0c8d3; border-radius: 5px; width: 330px; max-width: calc(100% - 32px); box-shadow: 0 10px 40px #1a2a4020; color: inherit; }
+dialog::backdrop { background: #24334530; }
+.dialog-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+h1 { font-size: 18px; margin: 0; }
+.close-dialog { background: none; border: none; font-size: 24px; color: #6a7584; cursor: pointer; }
+label { display: block; margin: 14px 0 6px; }
+select, input { width: 100%; padding: 10px; border: 1px solid #adb7c4; border-radius: 3px; background: white; color: inherit; font: inherit; }
+input:focus, select:focus { outline: 2px solid #799fe7; outline-offset: 1px; }
+.dialog-hint { font-size: 12px; margin: 18px 0 0; color: #75808e; }
+[role="alert"] { color: #a32b25; font-size: 12px; margin-bottom: 0; }
+.react-flow__attribution { bottom: 67px; }
+@media (max-width: 600px) { .empty-hint { white-space: normal; width: 240px; left: 56%; } .keyboard-hint { font-size: 11px; max-width: calc(100% - 280px); } }
