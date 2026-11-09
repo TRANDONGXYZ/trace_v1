@@ -13,7 +13,7 @@
     "check:worker": "wrangler deploy --dry-run",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "node --test tests/model.test.js tests/history.test.js tests/clustering.test.js tests/progress.test.js tests/cluster-explanations.test.js tests/local-chat.test.js tests/worker.test.js tests/cloud-client.test.js",
+    "test": "node --test tests/model.test.js tests/history.test.js tests/layout-restoration.test.js tests/clustering.test.js tests/progress.test.js tests/cluster-explanations.test.js tests/local-chat.test.js tests/worker.test.js tests/cloud-client.test.js",
     "test:cloud": "node tests/cloud-live.mjs",
     "test:ollama": "node --test tests/ollama.test.js",
     "test:browser": "playwright test",

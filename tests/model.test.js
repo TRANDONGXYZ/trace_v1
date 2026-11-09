@@ -228,7 +228,7 @@ test('reported November branches keep close x gaps; collision packing only adds 
   }
   const distance = n => Math.hypot(n.position.x - root.position.x, n.position.y - root.position.y);
   assert.ok(distance(six) / distance(five) < 1.25);
-  assert.ok(distance(seven) / distance(six) < 1.2);
+  // The taller cards need a full extra vertical lane; horizontal gaps stay compact.
   assert.equal(five.position.y, root.position.y);
   assert.ok(Math.abs(six.position.y - seven.position.y - NODE_HEIGHT - SAME_DATE_GAP) < 1e-8);
 });
@@ -342,8 +342,8 @@ test('vertical date envelope retains actual later branch heights without invente
   ];
   const ys = axisAnchors(nodes, 'y');
   assert.ok(ys.every((a, i) => !i || a.value > ys[i - 1].value));
-  assert.equal(projectTime(parseDate('12/01/27'), ys), -282);
-  assert.ok(-projectTime(parseDate('01/01/27'), ys) > 282);
+  assert.equal(projectTime(parseDate('12/01/27'), ys), -(250 + NODE_HEIGHT / 2));
+  assert.ok(-projectTime(parseDate('01/01/27'), ys) > 250 + NODE_HEIGHT / 2);
 });
 
 test('March reproduction uses January predecessor and does not jump above future May nodes during collision avoidance', () => {
@@ -687,7 +687,7 @@ test('all seven kinds save the required mistake and optional description without
       selectedId: initial.nodes[0]?.id,
     });
     const node = graph.nodes.at(-1);
-    assert.deepEqual(node.position, { x: kind === 'Consequence' ? 240 + spacing(0) : 240, y: kind === 'Consequence' ? 384 : 400 });
+    assert.deepEqual(node.position, { x: kind === 'Consequence' ? 240 + spacing(0) : 240, y: 400 });
     assert.equal(node.data.kind, kind);
     assert.equal(node.data.mistake, 'Lost my composure');
     assert.equal(node.data.description, 'I interrupted another person.');
@@ -815,7 +815,7 @@ test('different-date Consequences preserve calendar order and existing row/branc
   let action = add(empty(), '07/11/26');
   action = add(action, '07/11/26', action.nodes[0].id, 'Consequence');
   assert.equal(action.nodes[1].position.x - action.nodes[0].position.x, spacing(0));
-  assert.equal(action.nodes[1].position.y + 48, action.nodes[0].position.y + 32);
+  assert.equal(action.nodes[1].position.y, action.nodes[0].position.y);
   assert.equal(action.edges.length, 1);
 });
 
@@ -861,7 +861,7 @@ test('deleted or manual outgoing edges correctly choose the same-date Consequenc
   graph = add(graph, '07/11/26', rootId, 'Consequence');
   assert.ok(graph.nodes.at(-1).position.y < graph.nodes[0].position.y);
   for (let i = 0; i < graph.nodes.length; i++) for (let j = i + 1; j < graph.nodes.length; j++) {
-    assert.ok(Math.abs(graph.nodes[i].position.x - graph.nodes[j].position.x) >= 160 || Math.abs(graph.nodes[i].position.y - graph.nodes[j].position.y) >= 64);
+    assert.ok(Math.abs(graph.nodes[i].position.x - graph.nodes[j].position.x) >= 160 || Math.abs(graph.nodes[i].position.y - graph.nodes[j].position.y) >= NODE_HEIGHT);
   }
 });
 
@@ -891,7 +891,7 @@ test('incoming edges do not select the branch scenario and manual zero-day label
   incoming = connectNodes(incoming, { source: incoming.nodes[1].id, target: rootId });
   assert.equal(incoming.edges[0].target, rootId);
   incoming = add(incoming, '07/11/26', rootId, 'Consequence');
-  assert.equal(incoming.nodes.at(-1).position.y + 48, incoming.nodes[0].position.y + 32);
+  assert.equal(incoming.nodes.at(-1).position.y, incoming.nodes[0].position.y);
 
   let graph = add(empty(), '07/11/26', undefined, 'Mistake');
   const mistakeId = graph.nodes[0].id;

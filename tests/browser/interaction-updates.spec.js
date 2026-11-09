@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { createEvent, parseDate } from '../../src/model.js';
 
 const nodes = page => page.locator('.react-flow__node');
 const edges = page => page.locator('.react-flow__edge');
@@ -59,7 +60,7 @@ test('dynamic labels preserve entered text; multiline Description and larger ora
   const consequence = nodes(page).nth(1);
   await expect(consequence.locator('.node-shape')).toHaveCSS('fill', 'rgb(246, 178, 107)');
   const a = await nodes(page).first().boundingBox(), b = await consequence.boundingBox();
-  expect(a.height).toBeCloseTo(64); expect(b.width).toBeCloseTo(160); expect(b.height).toBeCloseTo(96);
+  expect(a.height).toBeCloseTo(96); expect(b.width).toBeCloseTo(160); expect(b.height).toBeCloseTo(96);
   expect(b.y + b.height / 2).toBeCloseTo(a.y + a.height / 2);
   await expect(saved(page)).toBeVisible(); await page.reload();
   await expect(nodes(page)).toHaveCount(2);
@@ -135,7 +136,7 @@ test('edge undo/redo, ignored navigation, and branching after undo preserve cont
   await expect(edges(page)).toHaveCount(0); await page.keyboard.press('Control+Z'); await expect(edges(page)).toHaveCount(1);
 });
 
-test('legacy saved fields, dimensions and layout are preserved while Consequences render consistently at the new height', async ({ page }) => {
+test('legacy content restores with taller cards and reflowed layout, without a load-time save or undo entry', async ({ page }) => {
   const graph = { nodes: [
     { id: 'old-m', type: 'event', position: { x: 240, y: 400 }, width: 160, height: 64,
       data: { kind: 'Mistake', mistake: 'Original text', description: 'Original description', time: Date.UTC(2026, 10, 8), placement: { mode: 'origin', origin: { x: 240, y: 400 } } } },
@@ -146,13 +147,58 @@ test('legacy saved fields, dimensions and layout are preserved while Consequence
   await page.addInitScript(value => localStorage.setItem('trace.whiteboard.v1', value), stored);
   await page.goto('/'); await expect(nodes(page)).toHaveCount(2);
   const before = await snapshot(page);
-  expect(before.nodes.map(n => n[1])).toEqual(['translate(240px, 400px)', 'translate(504px, 400px)']);
+  expect(before.nodes.map(n => n[1])).toEqual(['translate(240px, 384px)', 'translate(504px, 384px)']);
   expect((await nodes(page).last().boundingBox()).height).toBeCloseTo(96);
   await expect(nodes(page).last().locator('.node-mistake')).toHaveText('Original consequence');
   await nodes(page).first().click(); await page.keyboard.press('Delete'); await expect(nodes(page)).toHaveCount(1);
   await page.keyboard.press('Control+Z'); await expect.poll(() => snapshot(page)).toEqual(before);
   await page.waitForTimeout(3100);
   expect(await page.evaluate(() => localStorage.getItem('trace.whiteboard.v1'))).toBe(stored);
+});
+
+test('older overlapping branch positions reflow on open; later saves preserve deletion and undo positions exactly', async ({ page }) => {
+  await page.setViewportSize({ width: 1800, height: 1600 });
+  let graph = { nodes: [], edges: [] };
+  for (const [id, kind, date, selectedId] of [
+    ['a', 'Action', '08/11/26'], ['c1', 'Consequence', '08/11/26', 'a'],
+    ['c2', 'Consequence', '08/11/26', 'a'], ['c3', 'Consequence', '09/11/26', 'a'],
+    ['m', 'Mistake', '09/11/26'],
+  ]) graph = createEvent(graph, { id, kind, time: parseDate(date), mistake: id, description: 'Preserve this text', selectedId, firstPosition: { x: 240, y: 1100 } });
+  // Coordinates from the shorter-card layout, while some cards already had
+  // the newer Consequence height: this reproduces the reported overlap.
+  graph = { ...graph, nodes: graph.nodes.map(n => ({ ...n, height: n.data.kind === 'Consequence' ? 96 : 64,
+    position: { ...n.position, y: 1100 + (n.position.y - 1100) / 2 } })) };
+  const stored = JSON.stringify({ version: 1, graph });
+  await countWrites(page);
+  await page.addInitScript(value => {
+    if (!sessionStorage.getItem('legacy-seeded')) {
+      localStorage.setItem('trace.whiteboard.v1', value); sessionStorage.setItem('legacy-seeded', 'yes');
+    }
+  }, stored);
+  await page.goto('/'); await expect(nodes(page)).toHaveCount(5); await expect(edges(page)).toHaveCount(3);
+  const rectangles = await nodes(page).evaluateAll(elements => elements.map(el => {
+    const box = el.getBoundingClientRect(); return { x: box.x, y: box.y, width: box.width, height: box.height };
+  }));
+  for (const [i, a] of rectangles.entries()) {
+    expect(a.height).toBeCloseTo(96);
+    for (const b of rectangles.slice(i + 1)) {
+      if (a.x + a.width > b.x && b.x + b.width > a.x) {
+        expect(Math.max(b.y - a.y - a.height, a.y - b.y - b.height)).toBeGreaterThanOrEqual(31.9);
+      }
+    }
+  }
+  const initialWrites = await page.evaluate(() => window.diagramWrites);
+  await page.waitForTimeout(3100);
+  expect(await page.evaluate(() => window.diagramWrites)).toBe(initialWrites);
+  expect(await page.evaluate(() => localStorage.getItem('trace.whiteboard.v1'))).toBe(stored);
+  await page.screenshot({ path: 'test-results/restored-taller-branches.png' });
+  await nodes(page).first().click(); await page.keyboard.press('Delete');
+  await expect(nodes(page)).toHaveCount(4); await expect(edges(page)).toHaveCount(0);
+  const deleted = await snapshot(page); await expect(saved(page)).toBeVisible();
+  await page.keyboard.press('Control+Z'); await expect(nodes(page)).toHaveCount(5);
+  await page.keyboard.press('Control+Y'); await expect.poll(() => snapshot(page)).toEqual(deleted);
+  await expect(saved(page)).toBeVisible(); await page.reload();
+  await expect(nodes(page)).toHaveCount(4); expect(await snapshot(page)).toEqual(deleted);
 });
 
 test('Ctrl+Z/Y in input and multiline textarea stays in text editing instead of changing graph history', async ({ page }) => {
@@ -171,11 +217,18 @@ test('wheel pans in both requested directions, Ctrl-wheel and browser pinch zoom
   await expect(saved(page)).toBeVisible(); const writes = await page.evaluate(() => window.diagramWrites);
   const tick = page.getByTestId('horizontal-axis').locator('[data-month="11/26"]');
   const start = await viewport(page), startTick = await tick.boundingBox();
-  await page.mouse.move(900, 600); await page.mouse.wheel(40, 80);
-  await expect.poll(async () => (await viewport(page)).y).toBeCloseTo(start.y + 80, 0);
-  expect((await viewport(page)).x).toBeCloseTo(start.x + 40, 0); expect((await viewport(page)).zoom).toBe(start.zoom);
-  expect((await tick.boundingBox()).x).toBeCloseTo(startTick.x + 40, 0);
-  await page.mouse.wheel(-40, -80); await expect.poll(async () => (await viewport(page)).y).toBeCloseTo(start.y, 0);
+  const verticalTick = page.getByTestId('vertical-axis').locator('[data-month="11/26"]');
+  const startYTick = await verticalTick.boundingBox();
+  await page.mouse.move(900, 600);
+  // Natural trackpad gestures produce scroll deltas opposite to finger motion.
+  for (const [dx, dy, x, y] of [[0, -80, start.x, start.y + 80], [0, 80, start.x, start.y], [-40, 0, start.x + 40, start.y], [40, 0, start.x, start.y]]) {
+    await page.mouse.wheel(dx, dy);
+    await expect.poll(async () => (await viewport(page)).x).toBeCloseTo(x, 0);
+    await expect.poll(async () => (await viewport(page)).y).toBeCloseTo(y, 0);
+    expect((await viewport(page)).zoom).toBe(start.zoom);
+    expect((await tick.boundingBox()).x).toBeCloseTo(startTick.x + x - start.x, 0);
+    expect((await verticalTick.boundingBox()).y).toBeCloseTo(startYTick.y + y - start.y, 0);
+  }
   await page.keyboard.down('Control'); await page.mouse.wheel(0, -80); await page.keyboard.up('Control');
   await expect.poll(async () => (await viewport(page)).zoom).toBeGreaterThan(start.zoom);
   const zoomed = (await viewport(page)).zoom;

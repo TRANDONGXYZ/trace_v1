@@ -27,7 +27,7 @@ async function connect(page, from, sourcePort, to, targetPort) {
 }
 
 async function diamond(page) {
-  await page.setViewportSize({ width: 2000, height: 1400 });
+  await page.setViewportSize({ width: 2000, height: 2000 });
   await page.goto('/');
   for (const [i, date] of ['01/11/26', '03/11/26', '05/11/26', '07/11/26', '09/11/26', '11/11/26'].entries()) {
     await create(page, date, i % 2 ? 'Goal' : 'Action');

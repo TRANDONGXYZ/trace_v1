@@ -87,7 +87,7 @@ test('same-date Mistake Consequences use the required row and branch, zero-day l
   await create(page, 'Consequence', '30/11/26');
   const second = await nodes(page).nth(2).boundingBox();
   expect(second.x - rootBox.x).toBeCloseTo(264, 0);
-  expect(first.y - second.y).toBeCloseTo(120, 0);
+  expect(first.y - second.y).toBeCloseTo(128, 0);
   await expect(edges(page)).toHaveCount(2);
   await expect(edges(page).nth(1).locator('.edge-label')).toContainText('0days');
   await expect(edges(page).nth(1).locator('.react-flow__edge-path')).toHaveAttribute('d', / Q /);

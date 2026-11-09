@@ -61,7 +61,7 @@ test('keyboard creation, validation, positioning, chronological edges, highlight
   await expect(edges(page)).toHaveCount(3);
   const stacked = await nodes(page).nth(3).boundingBox();
   expect(stacked.x).toBeCloseTo(box.x + 264, 0);
-  expect(stacked.y).toBeCloseTo(branchBox.y - 88, 0);
+  expect(stacked.y).toBeCloseTo(branchBox.y - 128, 0);
   await page.screenshot({ path: 'test-results/whiteboard.png' });
   await root.click(); await page.keyboard.press('Delete');
   await expect(nodes(page)).toHaveCount(3);
@@ -128,7 +128,7 @@ test('reported November branches remain compact, January stays after December, a
   const seven = await nodes(page).nth(5).boundingBox();
   const distance = n => Math.hypot(n.x - rootBox.x, n.y - rootBox.y);
   expect(distance(six) / distance(five)).toBeLessThan(1.25);
-  expect(distance(seven) / distance(six)).toBeLessThan(1.2);
+  expect(six.y - seven.y).toBeCloseTo(128, 0);
   expect(six.x - five.x).toBeLessThan(10);
   expect(seven.x - six.x).toBeLessThan(10);
   await create(page, '12/01/27');
@@ -260,7 +260,7 @@ test('January-May-May-March reproduction preserves predecessor spacing and align
     const zoom = march.width / 160;
     const growth = 90 * Math.log1p(60 / 14);
     expect(Math.abs(march.x - january.x - (264 + growth) * zoom)).toBeLessThan(1);
-    expect(Math.abs(january.y - march.y - (88 + growth) * zoom)).toBeLessThan(1);
+    expect(Math.abs(january.y - march.y - (128 + growth) * zoom)).toBeLessThan(1);
     expect(actual.xMarch.time).toBe(Date.UTC(2027, 2, 1));
     expect(actual.yMarch.time).toBe(Date.UTC(2027, 2, 1));
     expect(march.x).toBeGreaterThan(actual.xMarch.x);

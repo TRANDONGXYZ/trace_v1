@@ -76,16 +76,18 @@ test('all seven node shapes, colors, selection outlines, and connection points r
     await expect(node.locator('.event-node')).toHaveAttribute('data-shape', expected[i][0]);
     await expect(node.locator('.node-shape')).toHaveCSS('fill', expected[i][1]);
     await expect(node.locator('strong')).toHaveText(types[i]);
+    expect((await node.boundingBox()).height).toBeCloseTo(96, 1);
+    expect((await node.boundingBox()).width).toBeCloseTo(160, 1);
     await expect(node.locator('.node-mistake')).toHaveText(`Lost focus ${i + 1}`);
     await page.keyboard.press('Escape');
   }
   const circle = await nodes(page).nth(6).locator('.node-shape').evaluate(el => {
     const box = el.getBBox(); return { width: box.width, height: box.height };
   });
-  expect(circle.width).toBeCloseTo(62, 1);
+  expect(circle.width).toBeCloseTo(94, 1);
   expect(circle.height).toBeCloseTo(circle.width, 1);
   await expect(nodes(page).nth(4).locator('.node-detail')).toHaveCount(1);
-  for (const [index, left, right] of [[3, 40, 120], [6, 49, 111]]) {
+  for (const [index, left, right] of [[3, 40, 120], [6, 33, 127]]) {
     const node = nodes(page).nth(index);
     const body = await node.boundingBox();
     for (const [handle, expectedX] of [['left', left], ['right', right]]) {

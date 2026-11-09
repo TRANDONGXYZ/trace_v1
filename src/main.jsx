@@ -245,7 +245,7 @@ function Whiteboard() {
       onConnect={connection => setGraph(current => connectNodes(current, connection))}
       deleteKeyCode={null} multiSelectionKeyCode={null} selectionKeyCode={null}
       minZoom={0.15} maxZoom={3} autoPanOnNodeFocus={false} elevateEdgesOnSelect={false}
-      panOnScroll panOnScrollSpeed={-1} zoomOnScroll={false} zoomOnPinch zoomActivationKeyCode="Control" zoomOnDoubleClick={false}
+      panOnScroll panOnScrollSpeed={1} zoomOnScroll={false} zoomOnPinch zoomActivationKeyCode="Control" zoomOnDoubleClick={false}
       onNodesChange={changes => {
         const selected = changes.find(c => c.type === 'select' && c.selected);
         if (selected) setSelectedId(selected.id);

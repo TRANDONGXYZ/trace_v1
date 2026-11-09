@@ -1,7 +1,9 @@
 import { NODE_KINDS } from './node-types.js';
+import { restoreLayout } from './model.js';
 
 export const STORAGE_KEY = 'trace.whiteboard.v1';
 export const AUTOSAVE_DELAY = 3000;
+export const LAYOUT_VERSION = 2;
 
 const point = value => value && Number.isFinite(value.x) && Number.isFinite(value.y);
 
@@ -25,7 +27,7 @@ export function readDiagram() {
         typeof edge.data.value !== 'string' || typeof edge.data.unit !== 'string') return null;
       edgeIds.add(edge.id);
     }
-    return graph;
+    return saved.layoutVersion === LAYOUT_VERSION ? graph : restoreLayout(graph);
   } catch {
     // Unavailable storage or damaged data must not stop the whiteboard opening.
     // Leave the existing storage entry untouched until actual content changes.
@@ -34,5 +36,5 @@ export function readDiagram() {
 }
 
 export function serializeDiagram(graph) {
-  return JSON.stringify({ version: 1, graph });
+  return JSON.stringify({ version: 1, layoutVersion: LAYOUT_VERSION, graph });
 }

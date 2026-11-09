@@ -1,11 +1,12 @@
-import { NODE_APPEARANCE, NODE_KINDS, limitDescription, nodeHeight } from './node-types.js';
+import { NODE_APPEARANCE, NODE_KINDS, NODE_HEIGHT, limitDescription, nodeHeight } from './node-types.js';
 import { connectionTypeError, creationTypeError, connectionOrder } from './node-rules.js';
 import { manualEdgePath, straightSegments } from './edge-routing.js';
 
 export const DAY = 86_400_000;
 export const NODE_WIDTH = 160;
-export const NODE_HEIGHT = 64;
-export const SAME_DATE_GAP = 24;
+export { NODE_HEIGHT };
+export const SAME_DATE_GAP = 32;
+const HORIZONTAL_GAP = 24;
 const LABEL_WIDTH = 64;
 const LABEL_HEIGHT = 46;
 const LABEL_GAP = 20;
@@ -69,7 +70,7 @@ export function spacing(days, axis = 'x') {
   return baseline + timeGrowth(days);
 }
 
-const overlaps = (a, b, ah = NODE_HEIGHT, bh = NODE_HEIGHT) => Math.abs(a.x - b.x) < NODE_WIDTH + SAME_DATE_GAP - 0.001 &&
+const overlaps = (a, b, ah = NODE_HEIGHT, bh = NODE_HEIGHT) => Math.abs(a.x - b.x) < NODE_WIDTH + HORIZONTAL_GAP - 0.001 &&
   a.y < b.y + bh + SAME_DATE_GAP - 0.001 && b.y < a.y + ah + SAME_DATE_GAP - 0.001;
 const verticalSpacing = (a, b) => spacing((b.data.time - a.data.time) / DAY, 'y') + (nodeHeight(a) + nodeHeight(b)) / 2 - NODE_HEIGHT;
 
@@ -127,7 +128,7 @@ function alignVerticalGroups(nodes) {
       if (earlier.maxTime >= later.minTime) continue;
       let distance = earlier.maxHeight - later.minHeight + timeGrowth((later.minTime - earlier.maxTime) / DAY);
       for (const a of earlier.nodes) for (const b of later.nodes) {
-        if (Math.abs(a.position.x - b.position.x) < NODE_WIDTH + SAME_DATE_GAP) {
+        if (Math.abs(a.position.x - b.position.x) < NODE_WIDTH + HORIZONTAL_GAP) {
           distance = Math.max(distance, -a.position.y + nodeHeight(b) + SAME_DATE_GAP + b.position.y);
         }
       }
@@ -174,7 +175,7 @@ function layoutGraph(nodes, edges) {
   };
   const separateColumns = (a, b) => {
     const [earlier, later] = a.data.time < b.data.time ? [a, b] : [b, a];
-    return constrain(earlier.data.time, later.data.time, NODE_WIDTH + SAME_DATE_GAP + nodeOffset(earlier) - nodeOffset(later));
+    return constrain(earlier.data.time, later.data.time, NODE_WIDTH + HORIZONTAL_GAP + nodeOffset(earlier) - nodeOffset(later));
   };
   for (let i = 1; i < dates.length; i++) {
     constrain(dates[i - 1], dates[i], dateOffsets.get(dates[i - 1]).max - dateOffsets.get(dates[i]).min + Math.max(1, timeGrowth((dates[i] - dates[i - 1]) / DAY)));
@@ -268,6 +269,23 @@ function layoutGraph(nodes, edges) {
       return { ...edge, sourceHandle: upward ? 'top' : 'right', targetHandle: 'left' };
     });
   return { nodes: placed, edges: placeEdgeLabels(placed, routed) };
+}
+
+// Reuse normal layout when older saved coordinates were calculated for shorter
+// cards. Preserve IDs, text, dates, connections and the first card's center.
+// This is a restore-time projection, not a content edit or undo operation.
+export function restoreLayout(graph) {
+  if (!graph.nodes.length) return graph;
+  const nodes = graph.nodes.map(node => {
+    const oldHeight = Number.isFinite(node.height) ? node.height : node.data.kind === 'Consequence' ? 96 : 64;
+    const offset = (oldHeight - nodeHeight(node)) / 2;
+    const placement = node.data.placement;
+    return { ...node, width: NODE_WIDTH, height: nodeHeight(node),
+      position: { ...node.position, y: node.position.y + offset },
+      data: { ...node.data, placement: { ...placement, ...(placement.origin ? { origin: { ...placement.origin, y: placement.origin.y + offset } } : {}) } },
+    };
+  });
+  return layoutGraph(nodes, graph.edges);
 }
 
 function placeEdgeLabels(nodes, edges) {
@@ -385,11 +403,11 @@ export function createEvent(state, { kind, mistake, time, description = '', sele
     if (mode === 'row') {
       let collision;
       while ((collision = sameDate.find(peer =>
-        Math.abs((peer.data.placement.columnOffset ?? 0) - columnOffset) < NODE_WIDTH + SAME_DATE_GAP &&
+        Math.abs((peer.data.placement.columnOffset ?? 0) - columnOffset) < NODE_WIDTH + HORIZONTAL_GAP &&
         overlaps({ x: 0, y: peer.position.y }, { x: 0, y: selected.position.y + (nodeHeight(selected) - height) / 2 }, nodeHeight(peer), height)))) {
         // An edge may have been deleted while its old destination remains.
         // Keep the required row and move only the new card into a free slot.
-        columnOffset = (collision.data.placement.columnOffset ?? 0) + NODE_WIDTH + SAME_DATE_GAP;
+        columnOffset = (collision.data.placement.columnOffset ?? 0) + NODE_WIDTH + HORIZONTAL_GAP;
       }
     }
   } else if (sameDate.length) {

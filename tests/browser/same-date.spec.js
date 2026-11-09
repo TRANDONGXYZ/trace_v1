@@ -24,14 +24,14 @@ test('unselected duplicates stack; selected duplicates use a right row then stac
   const rootBox = await root.boundingBox();
   const independent = await nodes(page).nth(1).boundingBox();
   expect(independent.x).toBeCloseTo(rootBox.x, 0);
-  expect(independent.y).toBeCloseTo(rootBox.y - 88, 0);
+  expect(independent.y).toBeCloseTo(rootBox.y - 128, 0);
   await expect(edges(page)).toHaveCount(0);
   await root.click();
   for (const [index, kind] of ['Goal', 'Blocked', 'Milestone'].entries()) {
     await create(page, kind, '30/11/26');
     const child = await nodes(page).nth(index + 2).boundingBox();
     expect(child.x - rootBox.x).toBeCloseTo(264, 0);
-    expect(child.y).toBeCloseTo(rootBox.y - 88 * index, 0);
+    expect(child.y).toBeCloseTo(rootBox.y - 128 * index, 0);
     await expect(edges(page)).toHaveCount(index + 1);
     await expect(edges(page).nth(index).locator('.edge-label')).toContainText('0days');
   }
@@ -43,7 +43,7 @@ test('unselected duplicates stack; selected duplicates use a right row then stac
   const unselected = await nodes(page).last().boundingBox();
   const highest = await nodes(page).nth(4).boundingBox();
   expect(unselected.x).toBeCloseTo(highest.x, 0);
-  expect(unselected.y).toBeCloseTo(highest.y - 88, 0);
+  expect(unselected.y).toBeCloseTo(highest.y - 128, 0);
   await expect(edges(page)).toHaveCount(3);
   await create(page, 'Action', '31/12/26');
   const checkMonth = async () => {
@@ -83,7 +83,7 @@ test('a duplicate date uses the highest outgoing destination height and keeps it
   const duplicate = await nodes(page).nth(3).boundingBox();
   expect(duplicate.x).toBeCloseTo(first.x, 0);
   expect(duplicate.x).toBeLessThan(highest.x);
-  expect(duplicate.y).toBeCloseTo(highest.y - 88, 0);
+  expect(duplicate.y).toBeCloseTo(highest.y - 128, 0);
   await expect(edges(page)).toHaveCount(3);
   const rootId = await root.getAttribute('data-id');
   const childId = await nodes(page).nth(3).getAttribute('data-id');
