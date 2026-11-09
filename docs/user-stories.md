@@ -17,7 +17,7 @@ Acceptance criteria:
 3. The date defaults to the computer's current local calendar date each time the dialog opens. Description input preserves complete user-perceived characters at its limit.
 4. Selection constrains available types under **BR-03**; submission rechecks the restrictions. With a Mistake selected, Consequence is the default and only allowed successor type.
 5. Changing Type immediately changes the required text label without losing entered text. Description is visibly multiline, optional, and retains newlines within its existing character limit.
-6. Earlier-dated Consequence creation from Mistake shows the exact **BR-03** error, keeps the dialog open with Time focused, and leaves content unchanged; equal/later dates work. All Consequences render as orange, taller rectangles under **BR-01**, including restored older records.
+6. Earlier-dated Consequence creation from Mistake shows the exact **BR-03** error, keeps the dialog open with Time focused, and leaves content unchanged; equal/later dates work. All seven types render at the taller dimensions under **BR-01**, retaining their shapes/colors, including restored older records.
 7. The card shows type, shortened text and date; hovering exposes full text and Description. Existing cards cannot be edited or dragged. The internal text key and stored data stay compatible.
 
 Remaining review: **M-01** (taxonomy/limits). Evidence: [creation UI](../src/main.jsx), [form tests](../tests/browser/node-creation.spec.js), [updated interactions](../tests/browser/interaction-updates.spec.js).
@@ -30,7 +30,7 @@ Acceptance criteria:
 
 1. The first node appears near one-quarter of the visible canvas width and half its height, accounting for zoom.
 2. Unselected creation, selected creation and duplicate dates follow **BR-04**, including no automatic edge for an unselected node.
-3. Adding an intermediate date can reflow existing nodes; nodes keep their original dates, and cards receive collision clearance. Manual node movement remains disabled.
+3. Adding an intermediate date can reflow existing nodes; nodes retain their dates and have at least a 32-unit clear gap when stacked above overlapping horizontal positions. Older short-card layouts reflow on restore without changing event data or connections. Manual node movement remains disabled.
 4. Fixed bottom/left rulers display unique represented-month markers and follow pan/zoom using **BR-05**. A month containing several events has one marker, not one per event.
 5. Regression examples cover January → May → May → March and an April 30 insertion beside a connected cluster; date order remains coherent under the documented row/stack exceptions.
 
@@ -88,7 +88,7 @@ Acceptance criteria:
 
 1. Content changes follow **BR-07**: another change during the waiting period restarts the debounce; navigation/highlights do not restart it or cause a write.
 2. The saved checkmark disappears for unsaved content and appears only when the current snapshot has been successfully written, or a saved snapshot has restored successfully.
-3. Reloading with valid saved data restores node types, text, descriptions, dates, positions, placement metadata and edges. Selection/highlights/viewport are not restored as diagram content.
+3. Reloading current-layout data restores types, text, descriptions, dates, positions, metadata and edges. Legacy layouts adapt spacing for the taller cards while preserving event content/relationships. Restore adds no history entry or storage write; current-layout deletion survivors retain their coordinates after reload. Selection/highlights/viewport are not restored.
 4. Blocked storage or a failed write keeps the board usable, retains the previous stored snapshot, and never falsely confirms the new content was saved.
 5. Invalid/unreadable saved data opens an empty usable board and is not overwritten merely by opening or navigating.
 

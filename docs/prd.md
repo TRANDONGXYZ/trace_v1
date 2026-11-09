@@ -25,14 +25,14 @@ Not implemented: visitor accounts, multiple-board management, shared editing, sy
 | Type | Observed appearance |
 | --- | --- |
 | Mistake | Red arrow-rectangle |
-| Consequence | Orange rectangle, 160 × 96 canvas units; other node sizes unchanged |
+| Consequence | Orange rectangle |
 | Action | Blue hexagon |
 | Blocked | Yellow triangle |
 | Goal | Light blue cylinder |
 | Milestone | Light green diamond |
 | Success | Dark green circle |
 
-All types share the fields below. Precise semantic distinctions between Goal, Milestone and Success remain open; there is no completion-state model.
+All seven types use a **160 × 96** layout box, retaining their shapes and colors. Success remains a true circle within that box. All types share the fields below. Precise semantic distinctions between Goal, Milestone and Success remain open; there is no completion-state model.
 
 ### BR-02 — Event data
 
@@ -57,7 +57,7 @@ Different-date arrows remain earlier → later; reverse gestures are normalized 
 3. Selected, new date: the selection is the reference. With no outgoing edges, keep its row; otherwise use a diagonal branch. Chronology/type checks still apply.
 4. Selected, date already present anywhere in the graph: with outgoing edges, place above the highest directly connected outgoing target; when target dates differ, retain the new event's date column. With no outgoing edges, use the selected node's row and an available horizontal slot for the new date. Incoming edges do not count as outgoing edges. This override does **not** require the selection itself to share the date.
 
-Spacing uses logarithmic time growth rather than day-proportional distance. At zoom 1, growth is `90 × ln(1 + |days| / 14)`; horizontal base spacing is 264. Vertical base spacing uses half the combined card heights plus 24 units (88 for two ordinary cards). Stacks retain a 24-unit gap. Different-height cards on the same row align by vertical center; collision checks, edge anchors and rulers account for the taller Consequence. Global constraints can enlarge distances and reflow nodes; formulas are not guaranteed final pairwise gaps. Missing tie-break and axis semantics decisions remain **A-01/02**.
+Spacing uses logarithmic time growth rather than day-proportional distance. At zoom 1, growth remains `90 × ln(1 + |days| / 14)`; horizontal base spacing remains 264. Vertical base spacing is **128**: 96-unit cards plus a **32-unit clear gap**, applied consistently to stacks and vertical collision clearance. Row alignment, collision checks, edge anchors and rulers use actual card dimensions. Global constraints can enlarge distances and reflow nodes; formulas are not guaranteed final pairwise gaps. Missing tie-break and axis semantics decisions remain **A-01/02**.
 
 ### BR-05 — Time display
 
@@ -69,7 +69,7 @@ Deleting an edge changes only that relationship. Deleting a node immediately rem
 
 ### BR-07 — Save boundary
 
-Create/delete node or edge operations change the saved content snapshot. Save after **3 seconds without another content change**; selection, highlighting, zoom and pan are excluded. Restore graph content and layout metadata from the same browser profile/origin, not viewport or selection state. The checkmark represents a successfully persisted current snapshot. Invalid storage opens empty without immediate overwrite; failed writes withhold confirmation. There is no unload flush, automatic failure retry or multi-tab reconciliation (**B-02/03**, **M-02**).
+Create/delete node or edge operations change the saved content snapshot. Save after **3 seconds without another content change**; selection, highlighting, zoom and pan are excluded. Restore graph content and layout metadata from the same browser profile/origin, not viewport or selection state. Older shorter-card layouts are reflowed on open under BR-11, without a load-time save. The checkmark represents a successfully persisted/restored content snapshot. Invalid storage opens empty without immediate overwrite; failed writes withhold confirmation. There is no unload flush, automatic failure retry or multi-tab reconciliation (**B-02/03**, **M-02**).
 
 ### BR-08 — Mistake grouping
 
@@ -93,11 +93,11 @@ Valid completed findings can be cached and retained during partial failure/cance
 
 Ctrl+Z undoes the last content change; Ctrl+Y reapplies the last undone change. Each valid create/delete node or edge operation is one snapshot, including any automatic edge and layout reflow. Restore exact content, positions, IDs, metadata and relationships; do not rerun placement to reconstruct an old state. After undo, a real new content change discards redo history. Invalid/no-op operations, panning, zooming, selection and highlighting add no history. Shortcuts inside forms/text editors remain normal editing shortcuts. Selection/highlights clear on diagram undo/redo.
 
-History is in memory for the current page session only. Undo/redo participates in the existing debounce; returning to an already saved snapshot needs no redundant write. Reload restores the latest saved diagram but starts empty history. Existing stored nodes keep their data/layout; display sizing adapts without a load-time storage migration.
+History is in memory for the current page session only. Undo/redo participates in the existing debounce; returning to an already saved snapshot needs no redundant write. Reload restores the latest saved diagram but starts empty history. Older layouts are recalculated once per restore to clear the taller cards, preserving event fields, IDs and relationships. This adaptation neither writes storage nor adds undo history. A layout marker is included with the next genuine content save so later reloads preserve current coordinates, including deletion-survivor positions, without reflowing them again.
 
 ### BR-12 — Viewport gestures
 
-Ordinary wheel and two-finger scrolling pan in both axes: positive/downward or rightward input moves the canvas content downward or rightward. Dragging empty canvas still pans. Only Ctrl+wheel and supported browser trackpad pinch zoom; ordinary scrolling and double-clicking empty canvas do not zoom. Double-clicking a node still highlights its chain. Rulers track the resulting viewport. Neither panning nor zooming changes content, undo history or diagram autosave.
+Ordinary wheel and two-finger scrolling pan in both axes. The previous sign inversion is removed: native scroll deltas pan the viewport in the opposite delta direction, matching the user's reported natural trackpad mapping. With that mapping, fingers down/up/right/left move the canvas down/up/right/left. Finger motion and raw browser scroll-delta signs must not be confused. Dragging empty canvas still pans. Only Ctrl+wheel and supported browser trackpad pinch zoom; ordinary scrolling and double-clicking empty canvas do not zoom. Rulers remain synchronized. Navigation changes neither content, undo history nor diagram autosave.
 
 ## Constraints and exceptions
 
