@@ -1,5 +1,5 @@
-import { NODE_APPEARANCE, NODE_KINDS, limitDescription } from './node-types.js';
-import { connectionTypeError, creationTypeError } from './node-rules.js';
+import { NODE_APPEARANCE, NODE_KINDS, limitDescription, nodeHeight } from './node-types.js';
+import { connectionTypeError, creationTypeError, connectionOrder } from './node-rules.js';
 import { manualEdgePath, straightSegments } from './edge-routing.js';
 
 export const DAY = 86_400_000;
@@ -69,8 +69,9 @@ export function spacing(days, axis = 'x') {
   return baseline + timeGrowth(days);
 }
 
-const overlaps = (a, b) => Math.abs(a.x - b.x) < NODE_WIDTH + SAME_DATE_GAP - 0.001 &&
-  Math.abs(a.y - b.y) < NODE_HEIGHT + SAME_DATE_GAP - 0.001;
+const overlaps = (a, b, ah = NODE_HEIGHT, bh = NODE_HEIGHT) => Math.abs(a.x - b.x) < NODE_WIDTH + SAME_DATE_GAP - 0.001 &&
+  a.y < b.y + bh + SAME_DATE_GAP - 0.001 && b.y < a.y + ah + SAME_DATE_GAP - 0.001;
+const verticalSpacing = (a, b) => spacing((b.data.time - a.data.time) / DAY, 'y') + (nodeHeight(a) + nodeHeight(b)) / 2 - NODE_HEIGHT;
 
 function alignVerticalGroups(nodes) {
   const byId = new Map(nodes.map(node => [node.id, node]));
@@ -127,7 +128,7 @@ function alignVerticalGroups(nodes) {
       let distance = earlier.maxHeight - later.minHeight + timeGrowth((later.minTime - earlier.maxTime) / DAY);
       for (const a of earlier.nodes) for (const b of later.nodes) {
         if (Math.abs(a.position.x - b.position.x) < NODE_WIDTH + SAME_DATE_GAP) {
-          distance = Math.max(distance, -a.position.y + NODE_HEIGHT + SAME_DATE_GAP + b.position.y);
+          distance = Math.max(distance, -a.position.y + nodeHeight(b) + SAME_DATE_GAP + b.position.y);
         }
       }
       constrain(earlier, later, distance);
@@ -138,7 +139,7 @@ function alignVerticalGroups(nodes) {
     if (!ref || ['stack', 'selected-stack'].includes(node.data.placement.mode) || ref.data.time === node.data.time) continue;
     const [earlier, later] = ref.data.time < node.data.time ? [ref, node] : [node, ref];
     constrain(componentById.get(find(earlier.id)), componentById.get(find(later.id)),
-      -earlier.position.y + spacing((later.data.time - earlier.data.time) / DAY, 'y') + later.position.y);
+      -earlier.position.y + verticalSpacing(earlier, later) + (nodeHeight(later) - nodeHeight(earlier)) / 2 + later.position.y);
   }
   const shifts = new Map();
   for (const component of ordered) {
@@ -213,12 +214,12 @@ function layoutGraph(nodes, edges) {
       const position = { x: columns.get(node.data.time) + nodeOffset(node) + offset, y: node.position.y };
       if (mode === 'stack') {
         const peers = placed.filter(n => n.data.time === node.data.time);
-        if (peers.length) position.y = Math.min(...peers.map(n => n.position.y)) - NODE_HEIGHT - SAME_DATE_GAP;
+        if (peers.length) position.y = Math.min(...peers.map(n => n.position.y)) - nodeHeight(node) - SAME_DATE_GAP;
       } else if (mode === 'selected-stack' && ref) {
-        position.y = ref.position.y - NODE_HEIGHT - SAME_DATE_GAP;
+        position.y = ref.position.y - nodeHeight(node) - SAME_DATE_GAP;
       } else if (ref) {
-        position.y = ref.position.y;
-        if (mode === 'diagonal') position.y -= timeDirection * spacing((node.data.time - ref.data.time) / DAY, 'y');
+        position.y = ref.position.y + (nodeHeight(ref) - nodeHeight(node)) / 2;
+        if (mode === 'diagonal') position.y -= timeDirection * verticalSpacing(ref, node);
       } else if (mode === 'origin') {
         position.y = node.data.placement.origin?.y ?? node.position.y;
       }
@@ -226,7 +227,7 @@ function layoutGraph(nodes, edges) {
         const direction = ['stack', 'selected-stack'].includes(mode) ? -1 : -timeDirection;
         const deferred = new Set();
         let collision;
-        while ((collision = placed.find(n => !deferred.has(n.id) && overlaps(position, n.position)))) {
+        while ((collision = placed.find(n => !deferred.has(n.id) && overlaps(position, n.position, nodeHeight(node), nodeHeight(n))))) {
           if (mode === 'diagonal' && Math.sign(node.data.time - collision.data.time) === direction) {
             // An upward move past a future event (or downward past an earlier
             // one) would invert vertical chronology. Separate their date
@@ -237,11 +238,11 @@ function layoutGraph(nodes, edges) {
           }
           // Move only to the nearest free vertical lane. The date column stays
           // unchanged, and later siblings no longer receive huge x/y jumps.
-          position.y = collision.position.y + direction * (NODE_HEIGHT + SAME_DATE_GAP);
+          position.y = collision.position.y + (direction < 0 ? -nodeHeight(node) - SAME_DATE_GAP : nodeHeight(collision) + SAME_DATE_GAP);
         }
       } else {
         for (const other of placed) {
-          if (overlaps(position, other.position)) changed = separateColumns(node, other) || changed;
+          if (overlaps(position, other.position, nodeHeight(node), nodeHeight(other))) changed = separateColumns(node, other) || changed;
         }
       }
       const result = { ...node, position };
@@ -252,7 +253,7 @@ function layoutGraph(nodes, edges) {
     // diagonal destination (including connected nodes) to reflow chronologically.
     placed = alignVerticalGroups(placed);
     for (let i = 0; i < placed.length; i++) for (let j = i + 1; j < placed.length; j++) {
-      if (overlaps(placed[i].position, placed[j].position)) {
+      if (overlaps(placed[i].position, placed[j].position, nodeHeight(placed[i]), nodeHeight(placed[j]))) {
         changed = separateColumns(placed[i], placed[j]) || changed;
       }
     }
@@ -263,7 +264,7 @@ function layoutGraph(nodes, edges) {
       if (edge.data.manual) return edge;
       const source = positioned.get(edge.source);
       const target = positioned.get(edge.target);
-      const upward = target.position.y < source.position.y;
+      const upward = target.position.y + nodeHeight(target) / 2 < source.position.y + nodeHeight(source) / 2 - 0.001;
       return { ...edge, sourceHandle: upward ? 'top' : 'right', targetHandle: 'left' };
     });
   return { nodes: placed, edges: placeEdgeLabels(placed, routed) };
@@ -271,7 +272,7 @@ function layoutGraph(nodes, edges) {
 
 function placeEdgeLabels(nodes, edges) {
   const byId = new Map(nodes.map(node => [node.id, node]));
-  const obstacles = nodes.map(n => ({ ...n.position, width: NODE_WIDTH, height: NODE_HEIGHT }));
+  const obstacles = nodes.map(n => ({ ...n.position, width: NODE_WIDTH, height: nodeHeight(n) }));
   const pad = 8;
   const freePoint = (x, y) => obstacles.every(r => x + LABEL_WIDTH / 2 + pad <= r.x || x - LABEL_WIDTH / 2 - pad >= r.x + r.width || y + LABEL_HEIGHT / 2 + pad <= r.y || y - LABEL_HEIGHT / 2 - pad >= r.y + r.height);
   const onSegment = (start, end, fixed, horizontal, containLabel = true) => {
@@ -300,7 +301,7 @@ function placeEdgeLabels(nodes, edges) {
         const appearance = NODE_APPEARANCE[node.data.kind];
         return {
           x: node.position.x + (handle === 'top' ? NODE_WIDTH / 2 : handle === 'left' ? appearance.left - 5 : appearance.right + 5),
-          y: node.position.y + (handle === 'top' ? -5 : NODE_HEIGHT / 2),
+          y: node.position.y + (handle === 'top' ? -5 : nodeHeight(node) / 2),
         };
       };
       const start = point(source, edge.sourceHandle);
@@ -324,9 +325,9 @@ function placeEdgeLabels(nodes, edges) {
     }
     const upward = edge.sourceHandle === 'top';
     const sx = source.position.x + (upward ? NODE_WIDTH / 2 : NODE_APPEARANCE[source.data.kind].right);
-    const sy = source.position.y + (upward ? 0 : NODE_HEIGHT / 2);
+    const sy = source.position.y + (upward ? 0 : nodeHeight(source) / 2);
     const tx = target.position.x + NODE_APPEARANCE[target.data.kind].left;
-    const ty = target.position.y + NODE_HEIGHT / 2;
+    const ty = target.position.y + nodeHeight(target) / 2;
     let label;
     if (upward) {
       const radius = Math.min(16, (tx - sx) / 2, (sy - ty) / 2);
@@ -350,12 +351,16 @@ export function createEvent(state, { kind, mistake, time, description = '', sele
   if (!NODE_KINDS.includes(kind) || !Number.isFinite(time)) throw new Error('Invalid event');
   if (typeof mistake !== 'string' || !mistake.trim()) throw new Error('Mistake is required');
   if (typeof description !== 'string' || limitDescription(description) !== description) throw new Error('Description must be at most 500 characters');
+  const height = NODE_APPEARANCE[kind].height ?? NODE_HEIGHT;
   const selected = state.nodes.find(n => n.id === selectedId);
   const typeError = creationTypeError(kind, selected?.data.kind);
   if (typeError) throw new Error(typeError);
+  if (selected?.data.kind === 'Mistake' && kind === 'Consequence' && time < selected.data.time) {
+    throw Object.assign(new Error('A Consequence must occur after the Mistake.'), { field: 'time' });
+  }
   if (selected) {
-    const [sourceKind, targetKind] = selected.data.time <= time ? [selected.data.kind, kind] : [kind, selected.data.kind];
-    const edgeError = connectionTypeError(sourceKind, targetKind);
+    const [source, target] = connectionOrder(selected, { data: { kind, time } });
+    const edgeError = connectionTypeError(source.data.kind, target.data.kind);
     if (edgeError) throw new Error(edgeError);
   }
   const sameDate = state.nodes.filter(n => n.data.time === time);
@@ -381,7 +386,7 @@ export function createEvent(state, { kind, mistake, time, description = '', sele
       let collision;
       while ((collision = sameDate.find(peer =>
         Math.abs((peer.data.placement.columnOffset ?? 0) - columnOffset) < NODE_WIDTH + SAME_DATE_GAP &&
-        Math.abs(peer.position.y - selected.position.y) < NODE_HEIGHT + SAME_DATE_GAP))) {
+        overlaps({ x: 0, y: peer.position.y }, { x: 0, y: selected.position.y + (nodeHeight(selected) - height) / 2 }, nodeHeight(peer), height)))) {
         // An edge may have been deleted while its old destination remains.
         // Keep the required row and move only the new card into a free slot.
         columnOffset = (collision.data.placement.columnOffset ?? 0) + NODE_WIDTH + SAME_DATE_GAP;
@@ -406,19 +411,19 @@ export function createEvent(state, { kind, mistake, time, description = '', sele
       mode = 'origin';
       initialPosition = {
         x: projectTime(time, axisAnchors(state.nodes, 'x')) - NODE_WIDTH / 2,
-        y: -projectTime(time, axisAnchors(state.nodes, 'y')) - NODE_HEIGHT / 2,
+        y: -projectTime(time, axisAnchors(state.nodes, 'y')) - height / 2,
       };
     }
   }
   const node = {
     id, type: 'event', position: initialPosition,
     data: { kind, mistake: mistake.trim(), time, description, placement: { mode, referenceId: reference?.id, columnOffset, ...(selectedSameDate ? { selectedSameDate: true } : {}), ...(mode === 'origin' ? { origin: initialPosition } : {}) } },
-    width: NODE_WIDTH, height: NODE_HEIGHT, draggable: false, connectable: true,
+    width: NODE_WIDTH, height, draggable: false, connectable: true,
     ariaLabel: `${kind}, ${formatDate(time)}`,
   };
   let edges = state.edges;
   if (selected) {
-    const [source, target] = selected.data.time <= time ? [selected, node] : [node, selected];
+    const [source, target] = connectionOrder(selected, node);
     edges = [...edges, {
       id: `edge-${source.id}-${target.id}`, source: source.id, target: target.id,
       type: 'time', data: { ...durationLabel(source.data.time, target.data.time) },
@@ -433,11 +438,8 @@ function chronologicalConnection(state, connection) {
   const a = state.nodes.find(n => n.id === connection.source);
   const b = state.nodes.find(n => n.id === connection.target);
   if (!a || !b || a.id === b.id) return null;
-  const sameDateConsequence = a.data.time === b.data.time && [a.data.kind, b.data.kind].includes('Mistake') && [a.data.kind, b.data.kind].includes('Consequence');
-  if (a.data.time === b.data.time && !sameDateConsequence) return null;
-  const forward = sameDateConsequence ? a.data.kind === 'Mistake' : a.data.time < b.data.time;
-  const source = forward ? a : b;
-  const target = forward ? b : a;
+  const [source, target] = connectionOrder(a, b);
+  const forward = source === a;
   if (connectionTypeError(source.data.kind, target.data.kind)) return null;
   const sourceHandle = (forward ? connection.sourceHandle : connection.targetHandle) ?? 'right';
   const targetHandle = (forward ? connection.targetHandle : connection.sourceHandle) ?? 'left';
@@ -489,19 +491,11 @@ export function upstreamChain(state, rootId) {
   return { nodeIds, edgeIds };
 }
 
-export function deleteBranch(state, rootId) {
-  const removed = new Set([rootId]);
-  const outgoing = new Map();
-  state.edges.forEach(e => outgoing.set(e.source, [...(outgoing.get(e.source) ?? []), e.target]));
-  const queue = [rootId];
-  while (queue.length) {
-    for (const target of outgoing.get(queue.pop()) ?? []) {
-      if (!removed.has(target)) { removed.add(target); queue.push(target); }
-    }
-  }
+export function deleteNode(state, nodeId) {
+  if (!state.nodes.some(node => node.id === nodeId)) return state;
   return {
-    nodes: state.nodes.filter(n => !removed.has(n.id)),
-    edges: state.edges.filter(e => !removed.has(e.source) && !removed.has(e.target)),
+    nodes: state.nodes.filter(n => n.id !== nodeId),
+    edges: state.edges.filter(e => e.source !== nodeId && e.target !== nodeId),
   };
 }
 
@@ -513,7 +507,7 @@ export function axisAnchors(nodes, axis) {
   const dates = new Map();
   for (const node of nodes) {
     if (axis === 'y' && node !== nodes[0] && ['row', 'stack', 'selected-stack'].includes(node.data.placement?.mode) && !node.data.placement.selectedSameDate) continue;
-    const value = axis === 'x' ? node.position.x + NODE_WIDTH / 2 : -(node.position.y + NODE_HEIGHT / 2);
+    const value = axis === 'x' ? node.position.x + NODE_WIDTH / 2 : -(node.position.y + nodeHeight(node) / 2);
     if (!dates.has(node.data.time)) dates.set(node.data.time, { time: node.data.time, value });
     else if (axis === 'x' || node.data.placement.selectedSameDate) {
       const anchor = dates.get(node.data.time);

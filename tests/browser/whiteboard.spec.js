@@ -6,7 +6,7 @@ async function create(page, time, kind = 'Action') {
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByLabel('Type', { exact: true }).selectOption(kind);
-  await page.getByLabel('Mistake', { exact: true }).fill('Lost focus');
+  await page.locator('#mistake').fill('Lost focus');
   await page.getByLabel('Time', { exact: true }).fill(time);
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).not.toBeVisible();
@@ -14,7 +14,7 @@ async function create(page, time, kind = 'Action') {
 const nodes = page => page.locator('.react-flow__node');
 const edges = page => page.locator('.react-flow__edge');
 
-test('keyboard creation, validation, positioning, chronological edges, highlighting, restrictions, cascading delete', async ({ page }) => {
+test('keyboard creation, validation, positioning, chronological edges, highlighting, restrictions, node-only delete', async ({ page }) => {
   const errors = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.goto('/');
@@ -22,7 +22,7 @@ test('keyboard creation, validation, positioning, chronological edges, highlight
   await page.keyboard.type('/n'); await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByLabel('Type', { exact: true }).selectOption('Action');
-  await page.getByLabel('Mistake', { exact: true }).fill('Lost focus');
+  await page.locator('#mistake').fill('Lost focus');
   await page.getByLabel('Time', { exact: true }).fill('31/02/26'); await page.keyboard.press('Enter');
   await expect(page.getByRole('alert')).toHaveText('Enter a valid date in DD/MM/YY format.');
   await page.getByLabel('Time', { exact: true }).fill('01/11/26'); await page.keyboard.press('Enter');
@@ -64,7 +64,7 @@ test('keyboard creation, validation, positioning, chronological edges, highlight
   expect(stacked.y).toBeCloseTo(branchBox.y - 88, 0);
   await page.screenshot({ path: 'test-results/whiteboard.png' });
   await root.click(); await page.keyboard.press('Delete');
-  await expect(nodes(page)).toHaveCount(0);
+  await expect(nodes(page)).toHaveCount(3);
   await expect(edges(page)).toHaveCount(0);
   expect(errors).toEqual([]);
 });
@@ -85,7 +85,7 @@ test('axes follow pan/zoom, use unique month starts, and keep their viewport edg
   await page.mouse.move(1000, 800); await page.mouse.down(); await page.mouse.move(1100, 850, { steps: 10 }); await page.mouse.up();
   await expect.poll(async () => (await tick.boundingBox()).x).toBeCloseTo(original.x + 100, 0);
   const panned = await tick.boundingBox();
-  await page.mouse.move(900, 700); await page.mouse.wheel(0, -250);
+  await page.mouse.move(900, 700); await page.keyboard.down('Control'); await page.mouse.wheel(0, -250); await page.keyboard.up('Control');
   await expect.poll(async () => (await tick.boundingBox()).x).not.toBeCloseTo(panned.x, 0);
   expect(await page.getByTestId('horizontal-axis').boundingBox()).toEqual(axisBox);
   await page.setViewportSize({ width: 850, height: 700 });
@@ -179,7 +179,7 @@ test('first node remains at one-quarter screen width when created after zooming'
   await page.goto('/');
   await expect(page.getByRole('main')).toBeVisible();
   await page.mouse.move(900, 700);
-  await page.mouse.wheel(0, -200);
+  await page.keyboard.down('Control'); await page.mouse.wheel(0, -200); await page.keyboard.up('Control');
   await expect.poll(async () => page.locator('.react-flow__viewport').evaluate(element => element.style.transform)).not.toContain('scale(1)');
   await create(page, '07/11/26');
   const box = await nodes(page).first().boundingBox();
@@ -221,7 +221,7 @@ test('vertical January marker follows the actual January branch before and after
   await checkAlignment();
   await page.mouse.move(1250, 900); await page.mouse.down(); await page.mouse.move(1190, 980, { steps: 10 }); await page.mouse.up();
   await checkAlignment();
-  await page.mouse.move(800, 600); await page.mouse.wheel(0, 180);
+  await page.mouse.move(800, 600); await page.keyboard.down('Control'); await page.mouse.wheel(0, 180); await page.keyboard.up('Control');
   await expect.poll(async () => page.locator('.react-flow__viewport').evaluate(el => el.style.transform)).not.toContain('scale(1)');
   await checkAlignment();
   await page.screenshot({ path: 'test-results/vertical-january-regression.png' });
@@ -277,7 +277,7 @@ test('January-May-May-March reproduction preserves predecessor spacing and align
   await checkTimeline();
   await page.mouse.move(1300, 950); await page.mouse.down(); await page.mouse.move(1220, 1010, { steps: 10 }); await page.mouse.up();
   await checkTimeline();
-  await page.mouse.move(800, 600); await page.mouse.wheel(0, 180);
+  await page.mouse.move(800, 600); await page.keyboard.down('Control'); await page.mouse.wheel(0, 180); await page.keyboard.up('Control');
   await expect.poll(async () => page.locator('.react-flow__viewport').evaluate(el => el.style.transform)).not.toContain('scale(1)');
   await checkTimeline();
   await page.screenshot({ path: 'test-results/march-predecessor-regression.png' });
@@ -299,7 +299,7 @@ test('April 30 remains between April and May markers beside a connected cluster'
   await expect(nodes(page)).toHaveCount(10);
   await expect(edges(page)).toHaveCount(5);
   // Frame the long timeline without changing node selection or placement.
-  await page.mouse.move(1000, 900); await page.mouse.wheel(0, 360);
+  await page.mouse.move(1000, 900); await page.keyboard.down('Control'); await page.mouse.wheel(0, 360); await page.keyboard.up('Control');
   await expect.poll(async () => page.locator('.react-flow__viewport').evaluate(el => el.style.transform)).not.toContain('scale(1)');
   const checkTimeline = async () => {
     const actual = await page.evaluate(() => {
@@ -369,7 +369,7 @@ test('screenshot case: April aligns when May 15 has an upward connection to the 
   for (const date of ['16/05/27', '13/03/27', '30/04/27']) await create(page, date);
   await expect(nodes(page)).toHaveCount(10);
   await expect(edges(page)).toHaveCount(6);
-  await page.mouse.move(1000, 1000); await page.mouse.wheel(0, 400);
+  await page.mouse.move(1000, 1000); await page.keyboard.down('Control'); await page.mouse.wheel(0, 400); await page.keyboard.up('Control');
   await expect(page.getByTestId('horizontal-axis').locator('[data-month="05/27"]')).toHaveCount(1);
   const checkAlignment = async () => {
     const actual = await page.evaluate(() => {

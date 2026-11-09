@@ -85,8 +85,9 @@ dialog::backdrop { background: #24334530; }
 h1 { font-size: 18px; margin: 0; }
 .close-dialog { background: none; border: none; font-size: 24px; color: #6a7584; cursor: pointer; }
 label { display: block; margin: 14px 0 6px; }
-select, input { width: 100%; padding: 10px; border: 1px solid #adb7c4; border-radius: 3px; background: white; color: inherit; font: inherit; }
-input:focus, select:focus { outline: 2px solid #799fe7; outline-offset: 1px; }
+select, input, textarea { width: 100%; padding: 10px; border: 1px solid #adb7c4; border-radius: 3px; background: white; color: inherit; font: inherit; }
+textarea { resize: vertical; min-height: 100px; }
+input:focus, select:focus, textarea:focus { outline: 2px solid #799fe7; outline-offset: 1px; }
 .dialog-hint { font-size: 12px; margin: 18px 0 0; color: #75808e; }
 [role="alert"] { color: #a32b25; font-size: 12px; margin-bottom: 0; }
 .react-flow__attribution { bottom: 67px; }

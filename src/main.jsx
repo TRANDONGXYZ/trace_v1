@@ -3,19 +3,20 @@ import { createRoot } from 'react-dom/client';
 import { ReactFlow, ReactFlowProvider, Background, BackgroundVariant, Handle, Position, BaseEdge, ConnectionMode, useReactFlow, useViewport } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import './styles.css';
-import { NODE_APPEARANCE, NODE_KINDS, limitDescription, localDateInput } from './node-types.js';
+import { NODE_APPEARANCE, NODE_KINDS, limitDescription, localDateInput, nodeHeight } from './node-types.js';
 import { creationTypeError } from './node-rules.js';
 import { manualEdgePath } from './edge-routing.js';
 import { useLocalDiagram } from './use-local-diagram.js';
 import { MistakeOverview } from './MistakeOverview.jsx';
-import { NODE_WIDTH, NODE_HEIGHT, axisAnchors, canConnectNodes, connectNodes, createEvent, deleteBranch, deleteEdge, formatDate, formatMonth, monthTicks, parseDate, projectTime, upstreamChain } from './model.js';
+import { NODE_WIDTH, axisAnchors, canConnectNodes, connectNodes, createEvent, deleteNode, deleteEdge, formatDate, formatMonth, monthTicks, parseDate, projectTime, upstreamChain } from './model.js';
 
 function EventNode({ data, selected }) {
   const appearance = NODE_APPEARANCE[data.kind];
   const shape = appearance.path;
+  const height = nodeHeight({ data });
   const details = [data.kind, data.mistake, formatDate(data.time), data.description].filter(Boolean).join('\n');
-  return <div className={`event-node nopan ${data.kind.toLowerCase()} ${selected ? 'is-selected' : ''}`} title={details} data-shape={appearance.shape}>
-    <svg className="node-geometry" viewBox="0 0 160 64" aria-hidden="true">
+  return <div className={`event-node nopan ${data.kind.toLowerCase()} ${selected ? 'is-selected' : ''}`} style={{ height }} title={details} data-shape={appearance.shape}>
+    <svg className="node-geometry" viewBox={`0 0 160 ${height}`} aria-hidden="true">
       <path className="node-shape" d={shape} fill={appearance.fill} stroke={appearance.stroke} />
       {appearance.detail && <path className="node-detail" d={appearance.detail} stroke={appearance.stroke} />}
       {(selected || data.chainHighlighted) && <path className="selection-outline" d={shape} />}
@@ -106,15 +107,17 @@ function CreateDialog({ onCreate, onClose, selectedNode }) {
   useEffect(() => { dialog.current.showModal(); typeField.current.focus(); }, []);
   const submit = event => {
     event.preventDefault();
-    if (!mistake.trim()) { setError({ message: 'Enter a mistake.', field: 'mistake' }); document.getElementById('mistake').focus(); return; }
+    if (!mistake.trim()) { setError({ message: `Enter ${kind === 'Action' ? 'an' : 'a'} ${kind.toLowerCase()}.`, field: 'mistake' }); document.getElementById('mistake').focus(); return; }
     const date = parseDate(time);
     if (date === null) { setError({ message: 'Enter a valid date in DD/MM/YY format.', field: 'time' }); document.getElementById('time').focus(); return; }
-    const message = onCreate({ kind, mistake, time: date, description });
-    if (message) { setError({ message, field: 'kind' }); typeField.current.focus(); }
+    const failure = onCreate({ kind, mistake, time: date, description });
+    if (failure) {
+      setError(failure); document.getElementById(failure.field).focus();
+    }
   };
   return <dialog ref={dialog} onCancel={onClose} aria-labelledby="create-title" onKeyDown={event => {
     if (event.key !== 'Tab') return;
-    const fields = [...dialog.current.querySelectorAll('select,input,button:not([hidden])')];
+    const fields = [...dialog.current.querySelectorAll('select,input,textarea,button:not([hidden])')];
     if (event.shiftKey && document.activeElement === fields[0]) { event.preventDefault(); fields.at(-1).focus(); }
     if (!event.shiftKey && document.activeElement === fields.at(-1)) { event.preventDefault(); fields[0].focus(); }
   }}>
@@ -124,21 +127,25 @@ function CreateDialog({ onCreate, onClose, selectedNode }) {
       <select id="kind" ref={typeField} autoFocus required value={kind} onChange={e => { setKind(e.target.value); setError(null); }} aria-invalid={typeError} aria-describedby={typeError ? 'form-error' : undefined} onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); e.currentTarget.form.requestSubmit(); } }}>
         {NODE_KINDS.map(type => <option key={type} disabled={!!creationTypeError(type, selectedNode?.data.kind)}>{type}</option>)}
       </select>
-      <label htmlFor="mistake">Mistake</label>
+      <label htmlFor="mistake">{kind}</label>
       <input id="mistake" required value={mistake} onChange={e => { setMistake(e.target.value); setError(null); }} aria-invalid={mistakeError} aria-describedby={mistakeError ? 'form-error' : undefined} autoComplete="off" />
       <label htmlFor="time">Time</label>
       <input id="time" required placeholder="DD/MM/YY" maxLength={8} value={time} onChange={e => { setTime(e.target.value); setError(null); }} aria-describedby={dateError ? 'form-error' : undefined} aria-invalid={dateError} autoComplete="off" inputMode="numeric" />
       <label htmlFor="description">Description</label>
-      <input id="description" placeholder="Optional, up to 500 characters" value={description} onChange={e => setDescription(limitDescription(e.target.value))} autoComplete="off" />
+      <textarea id="description" rows={4} placeholder="Optional, up to 500 characters" value={description} onChange={e => setDescription(limitDescription(e.target.value))} onKeyDown={event => {
+        if (event.key === 'Enter' && event.ctrlKey && !event.nativeEvent.isComposing) {
+          event.preventDefault(); event.currentTarget.form.requestSubmit();
+        }
+      }} />
       {error && <p id="form-error" role="alert">{error.message}</p>}
-      <p className="dialog-hint">Enter to create · Esc to cancel</p>
+      <p className="dialog-hint">Enter to create · Description: Enter for a new line, Ctrl+Enter to create · Esc to cancel</p>
       <button type="submit" hidden>Create node</button>
     </form>
   </dialog>;
 }
 
 function Whiteboard() {
-  const [graph, setGraph, saved] = useLocalDiagram();
+  const [graph, setGraph, saved, { undo, redo }] = useLocalDiagram();
   const [selectedId, setSelectedId] = useState(null);
   const [highlightedId, setHighlightedId] = useState(null);
   const [chainRootId, setChainRootId] = useState(null);
@@ -159,13 +166,20 @@ function Whiteboard() {
 
   useLayoutEffect(() => {
     const keydown = event => {
-      if (event.ctrlKey || event.metaKey || event.altKey || event.isComposing) return;
       if (event.target.closest?.('input,textarea,select,dialog,[contenteditable="true"]')) return;
+      if (event.isComposing) return;
+      if (event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey && ['z', 'y'].includes(event.key.toLowerCase())) {
+        event.preventDefault();
+        if (event.key.toLowerCase() === 'z') undo(); else redo();
+        setSelectedId(null); setHighlightedId(null); setChainRootId(null);
+        commandRef.current = ''; setCommand(''); return;
+      }
+      if (event.ctrlKey || event.metaKey || event.altKey) return;
       if (event.key === 'Delete' && (selectedRef.current || highlightedRef.current)) {
         event.preventDefault();
         const deletedId = selectedRef.current;
         const deletedEdge = highlightedRef.current;
-        setGraph(current => deletedId ? deleteBranch(current, deletedId) : deleteEdge(current, deletedEdge));
+        setGraph(current => deletedId ? deleteNode(current, deletedId) : deleteEdge(current, deletedEdge));
         if (deletedId) setChainRootId(null);
         setSelectedId(null); setHighlightedId(null);
         return;
@@ -183,24 +197,24 @@ function Whiteboard() {
     };
     document.addEventListener('keydown', keydown);
     return () => document.removeEventListener('keydown', keydown);
-  }, []);
+  }, [undo, redo, setGraph]);
 
   const create = fields => {
     const rect = root.current.getBoundingClientRect();
     const center = flow.screenToFlowPosition({ x: rect.left + rect.width / 4, y: rect.top + rect.height / 2 });
-    const firstPosition = { x: center.x - NODE_WIDTH / 2, y: center.y - NODE_HEIGHT / 2 };
+    const firstPosition = { x: center.x - NODE_WIDTH / 2, y: center.y - nodeHeight({ data: fields }) / 2 };
     try {
       const next = createEvent(graphRef.current, { ...fields, selectedId: selectedRef.current, firstPosition, id: crypto.randomUUID() });
       setGraph(next);
       closeDialog();
       return '';
     } catch (error) {
-      return error.message;
+      return { message: error.message, field: error.field ?? 'kind' };
     }
   };
 
   const nodes = useMemo(() => graph.nodes.map(n => ({
-    ...n, selected: n.id === selectedId,
+    ...n, height: nodeHeight(n), style: { ...n.style, height: nodeHeight(n) }, selected: n.id === selectedId,
     className: chain.nodeIds.has(n.id) ? 'chain-highlighted' : undefined,
     data: { ...n.data, chainHighlighted: chain.nodeIds.has(n.id) },
   })), [graph.nodes, selectedId, chain]);
@@ -231,6 +245,7 @@ function Whiteboard() {
       onConnect={connection => setGraph(current => connectNodes(current, connection))}
       deleteKeyCode={null} multiSelectionKeyCode={null} selectionKeyCode={null}
       minZoom={0.15} maxZoom={3} autoPanOnNodeFocus={false} elevateEdgesOnSelect={false}
+      panOnScroll panOnScrollSpeed={-1} zoomOnScroll={false} zoomOnPinch zoomActivationKeyCode="Control" zoomOnDoubleClick={false}
       onNodesChange={changes => {
         const selected = changes.find(c => c.type === 'select' && c.selected);
         if (selected) setSelectedId(selected.id);
@@ -242,7 +257,7 @@ function Whiteboard() {
       <TimeAxes nodes={graph.nodes} />
     </ReactFlow>
     {!graph.nodes.length && <div className="empty-hint">Type <kbd>/n</kbd> then <kbd>Enter</kbd> to create a node.</div>}
-    {!!graph.nodes.length && <div className="keyboard-hint"><kbd>/n</kbd> + <kbd>Enter</kbd> creates a node{selectedId ? ' · Delete removes selected branch' : highlightedId ? ' · Delete removes selected edge' : ''}</div>}
+    {!!graph.nodes.length && <div className="keyboard-hint"><kbd>/n</kbd> + <kbd>Enter</kbd> creates a node{selectedId ? ' · Delete removes selected node' : highlightedId ? ' · Delete removes selected edge' : ''}</div>}
     <button type="button" className="overview-button" aria-haspopup="dialog" onClick={() => setOverviewOpen(true)}>Mistake overview</button>
     {saved && <div className="save-confirmation" role="status" aria-label="All changes saved locally" title="All changes saved locally">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 12 4 4L19 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>

@@ -36,10 +36,10 @@ async function create(page, date, kind = 'Action') {
   await page.keyboard.type('/n'); await page.keyboard.press('Enter');
   await expect(page.getByLabel('Type', { exact: true })).toBeFocused();
   await page.getByLabel('Type', { exact: true }).selectOption(kind);
-  await page.getByLabel('Mistake', { exact: true }).fill('Lost focus');
+  await page.locator('#mistake').fill('Lost focus');
   await page.getByLabel('Time', { exact: true }).fill(date);
   await page.getByLabel('Description', { exact: true }).fill('Keep this description.');
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('Control+Enter');
   await expect(page.getByRole('dialog')).not.toBeVisible();
 }
 

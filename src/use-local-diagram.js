@@ -1,9 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react';
 import { AUTOSAVE_DELAY, STORAGE_KEY, readDiagram, serializeDiagram } from './persistence.js';
+import { diagramHistory, initialHistory } from './diagram-history.js';
 
 export function useLocalDiagram() {
   const [restored] = useState(readDiagram);
-  const [graph, setGraph] = useState(() => restored ?? { nodes: [], edges: [] });
+  const [history, dispatch] = useReducer(diagramHistory, restored ?? { nodes: [], edges: [] }, initialHistory);
+  const graph = history.present;
+  const setGraph = useCallback(value => dispatch({ type: 'change', value }), []);
+  const undo = useCallback(() => dispatch({ type: 'undo' }), []);
+  const redo = useCallback(() => dispatch({ type: 'redo' }), []);
   // Persist the content model, which excludes viewport, selection, and highlights.
   // Comparing snapshots also avoids saving for a no-op graph update.
   const content = useMemo(() => serializeDiagram(graph), [graph]);
@@ -24,5 +29,5 @@ export function useLocalDiagram() {
     return () => window.clearTimeout(timer);
   }, [content]);
 
-  return [graph, setGraph, content === savedContent];
+  return [graph, setGraph, content === savedContent, { undo, redo }];
 }

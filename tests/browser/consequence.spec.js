@@ -11,7 +11,7 @@ async function open(page) {
 }
 
 async function finish(page, date) {
-  await page.getByLabel('Mistake', { exact: true }).fill('Lost focus');
+  await page.locator('#mistake').fill('Lost focus');
   await page.getByLabel('Time', { exact: true }).fill(date);
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).not.toBeVisible();
@@ -54,7 +54,7 @@ test('Consequence requires a selected Mistake/Action and Mistake offers only Con
   await nodes(page).nth(2).click(); await open(page);
   await expect(page.getByLabel('Type', { exact: true }).locator('option').filter({ hasText: /^Consequence$/ })).toBeDisabled();
   // A backdated Mistake would point to Goal, violating the outgoing type rule.
-  await page.getByLabel('Mistake', { exact: true }).fill('Lost focus');
+  await page.locator('#mistake').fill('Lost focus');
   await page.getByLabel('Time', { exact: true }).fill('09/11/26');
   await page.keyboard.press('Enter');
   await expect(page.getByRole('alert')).toHaveText('Mistake nodes can only connect to Consequence nodes.');
@@ -80,14 +80,14 @@ test('same-date Mistake Consequences use the required row and branch, zero-day l
   const rootBox = await root.boundingBox();
   const first = await nodes(page).nth(1).boundingBox();
   expect(first.x - rootBox.x).toBeCloseTo(264, 0);
-  expect(first.y).toBeCloseTo(rootBox.y, 0);
+  expect(first.y + first.height / 2).toBeCloseTo(rootBox.y + rootBox.height / 2, 0);
   await expect(edges(page)).toHaveCount(1);
   await expect(edges(page).first().locator('.edge-label')).toContainText('0days');
   await expect(edges(page).first().locator('.react-flow__edge-path')).toHaveAttribute('d', /^M .* L /);
   await create(page, 'Consequence', '30/11/26');
   const second = await nodes(page).nth(2).boundingBox();
   expect(second.x - rootBox.x).toBeCloseTo(264, 0);
-  expect(rootBox.y - second.y).toBeCloseTo(88, 0);
+  expect(first.y - second.y).toBeCloseTo(120, 0);
   await expect(edges(page)).toHaveCount(2);
   await expect(edges(page).nth(1).locator('.edge-label')).toContainText('0days');
   await expect(edges(page).nth(1).locator('.react-flow__edge-path')).toHaveAttribute('d', / Q /);
@@ -115,8 +115,8 @@ test('same-date Mistake Consequences use the required row and branch, zero-day l
   await checkMonths();
   await page.screenshot({ path: 'test-results/same-date-consequences.png' });
   await root.click(); await page.keyboard.press('Delete');
-  await expect(nodes(page)).toHaveCount(1);
-  await expect(nodes(page).first()).toHaveAttribute('aria-label', 'Action, 31/12/26');
+  await expect(nodes(page)).toHaveCount(3);
+  await expect(nodes(page).last()).toHaveAttribute('aria-label', 'Action, 31/12/26');
   await expect(edges(page)).toHaveCount(0);
   expect(errors).toEqual([]);
 });
@@ -136,8 +136,10 @@ test('manual connections cannot bypass type rules and manual/deleted edges choos
   await edges(page).first().locator('.edge-label').click(); await page.keyboard.press('Delete');
   await expect(nodes(page)).toHaveCount(4);
   await expect(edges(page)).toHaveCount(0);
-  // Equal-date reverse gesture must still save a Mistake -> Consequence arrow.
+  // Equal dates retain requested direction: Consequence -> Mistake fails.
   await drag(page, 1, 'top', 0, 'right');
+  await expect(edges(page)).toHaveCount(0);
+  await drag(page, 0, 'right', 1, 'top');
   await expect(edges(page)).toHaveCount(1);
   const ids = await nodes(page).evaluateAll(elements => elements.map(el => el.getAttribute('data-id')));
   await expect(edges(page).first()).toHaveAttribute('data-id', `edge-${ids[0]}-${ids[1]}`);
@@ -154,7 +156,8 @@ test('manual connections cannot bypass type rules and manual/deleted edges choos
   await nodes(page).first().click(); await create(page, 'Consequence', '07/11/26');
   const replacement = await nodes(page).last().boundingBox();
   const old = await nodes(page).nth(1).boundingBox();
-  expect(replacement.y).toBeCloseTo((await nodes(page).first().boundingBox()).y, 0);
+  const parentBox = await nodes(page).first().boundingBox();
+  expect(replacement.y + replacement.height / 2).toBeCloseTo(parentBox.y + parentBox.height / 2, 0);
   expect(replacement.x).toBeGreaterThan(old.x + old.width);
   await expect(nodes(page)).toHaveCount(6);
   await expect(edges(page)).toHaveCount(1);

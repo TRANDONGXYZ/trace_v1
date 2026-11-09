@@ -110,7 +110,7 @@ test('production autosave still debounces content changes and ignores navigation
   await page.clock.runFor(32);
   await page.getByRole('main').focus(); await page.keyboard.type('/n'); await page.keyboard.press('Enter');
   await page.getByLabel('Type', { exact: true }).selectOption('Action');
-  await page.getByLabel('Mistake', { exact: true }).fill('Keep the existing whiteboard');
+  await page.getByLabel('Action', { exact: true }).fill('Keep the existing whiteboard');
   await page.getByLabel('Time', { exact: true }).fill('08/11/26'); await page.keyboard.press('Enter');
   await page.clock.runFor(2999);
   expect(await page.evaluate(key => localStorage.getItem(key), STORAGE_KEY)).toBeNull();

@@ -7,7 +7,7 @@ async function create(page, kind, date) {
   await expect(page.getByRole('dialog')).toBeVisible();
   await expect(page.getByLabel('Type', { exact: true })).toBeFocused();
   await page.getByLabel('Type', { exact: true }).selectOption(kind);
-  await page.getByLabel('Mistake', { exact: true }).fill('Lost focus');
+  await page.locator('#mistake').fill('Lost focus');
   await page.getByLabel('Time', { exact: true }).fill(date);
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).not.toBeVisible();

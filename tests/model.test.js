@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { DAY, NODE_HEIGHT, SAME_DATE_GAP, axisAnchors, canConnectNodes, connectNodes, createEvent, deleteBranch, deleteEdge, durationLabel, monthTicks, parseDate, projectTime, spacing, upstreamChain } from '../src/model.js';
-import { NODE_KINDS, limitDescription } from '../src/node-types.js';
+import { DAY, NODE_HEIGHT, SAME_DATE_GAP, axisAnchors, canConnectNodes, connectNodes, createEvent, deleteNode, deleteEdge, durationLabel, monthTicks, parseDate, projectTime, spacing, upstreamChain } from '../src/model.js';
+import { NODE_KINDS, limitDescription, nodeHeight } from '../src/node-types.js';
 
 let sequence = 0;
 function add(state, date, selectedId, kind = 'Action') {
@@ -82,6 +82,7 @@ test('unselected equal dates stack in one column with a small gap and no same-da
 test('selected same-date creation uses a right row then stacks above the highest outgoing destination for every permitted type pair', () => {
   for (const sourceKind of NODE_KINDS) for (const targetKind of NODE_KINDS) {
     if ((sourceKind === 'Mistake' && targetKind !== 'Consequence') ||
+      (sourceKind === 'Consequence' && ['Mistake', 'Milestone', 'Success'].includes(targetKind)) ||
       (targetKind === 'Consequence' && !['Mistake', 'Action'].includes(sourceKind))) continue;
     let state = sourceKind === 'Consequence' ? add(empty(), '06/11/26') : empty();
     state = add(state, '07/11/26', state.nodes[0]?.id, sourceKind);
@@ -99,13 +100,13 @@ test('selected same-date creation uses a right row then stacks above the highest
       assert.equal(edge.data.days, 0);
       if (!i) {
         assert.equal(child.position.x - parent.position.x, spacing(0));
-        assert.equal(child.position.y, parent.position.y);
+        assert.equal(child.position.y + nodeHeight(child) / 2, parent.position.y + nodeHeight(parent) / 2);
         assert.equal(edge.sourceHandle, 'right');
       } else {
         const previous = state.nodes.at(-2);
         assert.equal(child.data.placement.referenceId, previous.id);
         assert.equal(child.position.x, previous.position.x);
-        assert.equal(previous.position.y - child.position.y, NODE_HEIGHT + SAME_DATE_GAP);
+        assert.equal(previous.position.y - child.position.y, nodeHeight(child) + SAME_DATE_GAP);
         assert.equal(edge.sourceHandle, 'top');
       }
     }
@@ -180,7 +181,7 @@ test('collision handling preserves the selected row', () => {
   }
 });
 
-test('deletion recursively removes descendants and their edges, retaining unrelated roots', () => {
+test('deletion removes only the selected node and incident edges without moving descendants', () => {
   let state = add(empty(), '01/11/26');
   const root = state.nodes[0].id;
   state = add(state, '02/11/26', root);
@@ -190,10 +191,12 @@ test('deletion recursively removes descendants and their edges, retaining unrela
   const sibling = state.nodes[3].id;
   state = add(state, '01/12/26');
   const unrelated = state.nodes[4].id;
-  const subtree = deleteBranch(state, child);
-  assert.deepEqual(subtree.nodes.map(n => n.id), [root, sibling, unrelated]);
+  const subtree = deleteNode(state, child);
+  assert.deepEqual(subtree.nodes, state.nodes.filter(n => n.id !== child));
+  subtree.nodes.forEach(n => assert.equal(n, state.nodes.find(original => original.id === n.id)));
   assert.equal(subtree.edges.length, 1);
-  assert.deepEqual(deleteBranch(state, root).nodes.map(n => n.id), [unrelated]);
+  assert.deepEqual(deleteNode(state, root).nodes, state.nodes.slice(1));
+  assert.deepEqual(deleteNode(state, root).edges, state.edges.filter(e => e.source !== root && e.target !== root));
 });
 
 test('monthly references are unique, use first day UTC, and progress monotonically', () => {
@@ -298,7 +301,7 @@ test('deterministic mixed creation and deletion preserve chronology, no overlaps
     for (const edge of state.edges) {
       assert.ok(state.nodes.find(n => n.id === edge.source).data.time <= state.nodes.find(n => n.id === edge.target).data.time);
     }
-    if (i % 11 === 10) state = deleteBranch(state, state.nodes[Math.floor(rng() * state.nodes.length)].id);
+    if (i % 11 === 10) state = deleteNode(state, state.nodes[Math.floor(rng() * state.nodes.length)].id);
   }
 });
 
@@ -484,7 +487,7 @@ test('adding and deleting unrelated connected nodes cannot switch off independen
   };
   assert.equal(state.edges.length, 1);
   check();
-  state = deleteBranch(state, november);
+  state = deleteNode(state, november);
   state = add(state, '31/03/27');
   assert.equal(state.edges.length, 0);
   check();
@@ -605,14 +608,13 @@ test('all top/side endpoints work and reversed gestures retain chronological arr
   }
 });
 
-test('self, equal-date, duplicate, missing-node, and unsupported-handle connections are rejected', () => {
+test('self, duplicate, missing-node, and unsupported-handle connections are rejected', () => {
   let state = independentEvents();
   state = add(state, '01/11/26');
   const [a, b] = state.nodes;
   state = connectNodes(state, { source: a.id, target: b.id });
   for (const invalid of [
     { source: a.id, target: a.id },
-    { source: a.id, target: state.nodes.at(-1).id },
     { source: b.id, target: a.id },
     { source: a.id, target: 'missing' },
     { source: a.id, target: state.nodes[2].id, sourceHandle: 'bottom' },
@@ -638,7 +640,7 @@ test('deleting a single manual or automatic edge preserves all node and other ed
   assert.equal(deleteEdge(automatic, automatic.edges[0].id).nodes, automatic.nodes);
   assert.equal(deleteEdge(automatic, automatic.edges[0].id).edges.length, 0);
   // After disconnecting B from D, deleting B no longer reaches the merged D.
-  const afterDelete = deleteBranch(next, b.id);
+  const afterDelete = deleteNode(next, b.id);
   assert.ok(afterDelete.nodes.some(n => n.id === graph.nodes[3].id));
   assert.ok(afterDelete.nodes.some(n => n.id === a.id));
 });
@@ -657,8 +659,9 @@ test('upstream chains include every merging path and exclude descendants and unr
   assert.deepEqual([...upstreamChain(graph, a.id).nodeIds], [a.id]);
   assert.equal(upstreamChain(graph, a.id).edgeIds.size, 0);
   assert.equal(upstreamChain(graph, 'missing').nodeIds.size, 0);
-  // Node deletion still removes the complete downstream branch, including a merge.
-  assert.deepEqual(deleteBranch(graph, a.id).nodes.map(n => n.id), [f.id]);
+  const deleted = deleteNode(graph, a.id);
+  assert.deepEqual(deleted.nodes, graph.nodes.slice(1));
+  assert.deepEqual(deleted.edges, graph.edges.filter(edge => edge.source !== a.id && edge.target !== a.id));
 });
 
 test('manually chosen ports persist through subsequent automatic layout and count as outgoing connections', () => {
@@ -684,7 +687,7 @@ test('all seven kinds save the required mistake and optional description without
       selectedId: initial.nodes[0]?.id,
     });
     const node = graph.nodes.at(-1);
-    assert.deepEqual(node.position, { x: kind === 'Consequence' ? 240 + spacing(0) : 240, y: 400 });
+    assert.deepEqual(node.position, { x: kind === 'Consequence' ? 240 + spacing(0) : 240, y: kind === 'Consequence' ? 384 : 400 });
     assert.equal(node.data.kind, kind);
     assert.equal(node.data.mistake, 'Lost my composure');
     assert.equal(node.data.description, 'I interrupted another person.');
@@ -766,7 +769,7 @@ test('same-date Consequences follow a Mistake on the right row first, then above
   let root = graph.nodes[0];
   let first = graph.nodes[1];
   assert.equal(first.position.x - root.position.x, spacing(0));
-  assert.equal(first.position.y, root.position.y);
+  assert.equal(first.position.y + nodeHeight(first) / 2, root.position.y + nodeHeight(root) / 2);
   assert.equal(graph.edges[0].source, root.id);
   assert.equal(graph.edges[0].target, first.id);
   assert.equal(graph.edges[0].sourceHandle, 'right');
@@ -775,25 +778,30 @@ test('same-date Consequences follow a Mistake on the right row first, then above
   graph = add(graph, '07/11/26', rootId, 'Consequence');
   root = graph.nodes[0]; first = graph.nodes.find(n => n.id === firstId);
   const second = graph.nodes[2];
-  assert.equal(first.position.y, root.position.y);
+  assert.equal(first.position.y + nodeHeight(first) / 2, root.position.y + nodeHeight(root) / 2);
   assert.equal(second.position.x - root.position.x, spacing(0));
-  assert.equal(root.position.y - second.position.y, spacing(0, 'y'));
+  assert.equal(first.position.y - second.position.y, nodeHeight(second) + SAME_DATE_GAP);
   assert.equal(graph.edges[1].sourceHandle, 'top');
   assert.equal(graph.edges[1].targetHandle, 'left');
   assert.equal(graph.edges[1].data.days, 0);
   assert.equal(monthTicks(graph.nodes).length, 1);
   const upstream = upstreamChain(graph, second.id);
   assert.deepEqual([...upstream.nodeIds].sort(), [root.id, second.id].sort());
-  assert.equal(deleteBranch(graph, rootId).nodes.length, 0);
+  assert.equal(deleteNode(graph, rootId).nodes.length, 2);
 });
 
 test('different-date Consequences preserve calendar order and existing row/branch placement', () => {
   for (const kind of ['Mistake', 'Action']) for (const date of ['06/11/26', '08/11/26']) {
     let graph = add(empty(), '07/11/26', undefined, kind);
     const rootId = graph.nodes[0].id;
+    if (kind === 'Mistake' && date === '06/11/26') {
+      const snapshot = JSON.stringify(graph);
+      assert.throws(() => add(graph, date, rootId, 'Consequence'), { message: 'A Consequence must occur after the Mistake.' });
+      assert.equal(JSON.stringify(graph), snapshot); continue;
+    }
     graph = add(graph, date, rootId, 'Consequence');
     const [root, child] = graph.nodes;
-    assert.equal(root.position.y, child.position.y);
+    assert.equal(root.position.y + nodeHeight(root) / 2, child.position.y + nodeHeight(child) / 2);
     assert.ok(Math.abs(Math.abs(child.position.x - root.position.x) - spacing(1)) < 1e-8);
     const source = graph.nodes.find(n => n.id === graph.edges[0].source);
     const target = graph.nodes.find(n => n.id === graph.edges[0].target);
@@ -807,17 +815,18 @@ test('different-date Consequences preserve calendar order and existing row/branc
   let action = add(empty(), '07/11/26');
   action = add(action, '07/11/26', action.nodes[0].id, 'Consequence');
   assert.equal(action.nodes[1].position.x - action.nodes[0].position.x, spacing(0));
-  assert.equal(action.nodes[1].position.y, action.nodes[0].position.y);
+  assert.equal(action.nodes[1].position.y + 48, action.nodes[0].position.y + 32);
   assert.equal(action.edges.length, 1);
 });
 
-test('manual connections enforce source/target types in either gesture direction and only permit the specified same-date exception', () => {
+test('all type pairs obey the same rules on equal dates and normalize only different-date gestures', () => {
   for (const sourceKind of NODE_KINDS) for (const targetKind of NODE_KINDS) {
     const graph = { nodes: [
       { id: 'earlier', position: { x: 0, y: 0 }, data: { kind: sourceKind, time: parseDate('07/11/26') } },
       { id: 'later', position: { x: 300, y: -100 }, data: { kind: targetKind, time: parseDate('08/11/26') } },
     ], edges: [] };
     const allowed = (sourceKind !== 'Mistake' || targetKind === 'Consequence') &&
+      (sourceKind !== 'Consequence' || !['Mistake', 'Milestone', 'Success'].includes(targetKind)) &&
       (targetKind !== 'Consequence' || ['Mistake', 'Action'].includes(sourceKind));
     for (const [source, target] of [['earlier', 'later'], ['later', 'earlier']]) {
       assert.equal(canConnectNodes(graph, { source, target }), allowed, `${sourceKind} -> ${targetKind}`);
@@ -826,11 +835,10 @@ test('manual connections enforce source/target types in either gesture direction
       if (allowed) assert.equal(next.edges[0].source, 'earlier');
     }
     graph.nodes[1].data.time = graph.nodes[0].data.time;
-    const sameDateAllowed = [sourceKind, targetKind].includes('Mistake') && [sourceKind, targetKind].includes('Consequence');
-    assert.equal(canConnectNodes(graph, { source: 'later', target: 'earlier' }), sameDateAllowed);
-    if (sameDateAllowed) {
-      const next = connectNodes(graph, { source: 'later', target: 'earlier' });
-      assert.equal(next.nodes.find(n => n.id === next.edges[0].source).data.kind, 'Mistake');
+    assert.equal(canConnectNodes(graph, { source: 'earlier', target: 'later' }), allowed);
+    if (allowed) {
+      const next = connectNodes(graph, { source: 'earlier', target: 'later' });
+      assert.equal(next.edges[0].source, 'earlier');
       assert.equal(next.edges[0].data.days, 0);
     }
   }
@@ -846,9 +854,9 @@ test('deleted or manual outgoing edges correctly choose the same-date Consequenc
   graph = deleteEdge(graph, graph.edges[0].id);
   graph = add(graph, '07/11/26', rootId, 'Consequence');
   const next = graph.nodes[2];
-  assert.equal(next.position.y, graph.nodes[0].position.y);
+  assert.equal(next.position.y + nodeHeight(next) / 2, graph.nodes[0].position.y + nodeHeight(graph.nodes[0]) / 2);
   assert.ok(next.position.x > original.position.x);
-  graph = connectNodes(graph, { source: original.id, target: rootId, sourceHandle: 'left', targetHandle: 'top' });
+  graph = connectNodes(graph, { source: rootId, target: original.id, sourceHandle: 'top', targetHandle: 'left' });
   assert.equal(graph.edges.at(-1).source, rootId);
   graph = add(graph, '07/11/26', rootId, 'Consequence');
   assert.ok(graph.nodes.at(-1).position.y < graph.nodes[0].position.y);
@@ -879,10 +887,11 @@ test('same-date Consequence offsets remain inside their month when future dates 
 test('incoming edges do not select the branch scenario and manual zero-day labels stay clear of added Consequences', () => {
   let incoming = add(empty(), '07/11/26', undefined, 'Mistake');
   const rootId = incoming.nodes[0].id;
-  incoming = add(incoming, '06/11/26', rootId, 'Consequence');
+  incoming = add(incoming, '06/11/26', undefined, 'Action');
+  incoming = connectNodes(incoming, { source: incoming.nodes[1].id, target: rootId });
   assert.equal(incoming.edges[0].target, rootId);
   incoming = add(incoming, '07/11/26', rootId, 'Consequence');
-  assert.equal(incoming.nodes.at(-1).position.y, incoming.nodes[0].position.y);
+  assert.equal(incoming.nodes.at(-1).position.y + 48, incoming.nodes[0].position.y + 32);
 
   let graph = add(empty(), '07/11/26', undefined, 'Mistake');
   const mistakeId = graph.nodes[0].id;
@@ -891,12 +900,42 @@ test('incoming edges do not select the branch scenario and manual zero-day label
   graph = add(graph, '06/11/26', undefined, 'Goal');
   graph = add(graph, '08/11/26');
   graph = deleteEdge(graph, graph.edges[0].id);
-  graph = connectNodes(graph, { source: consequenceId, sourceHandle: 'top', target: mistakeId, targetHandle: 'right' });
+  graph = connectNodes(graph, { source: mistakeId, sourceHandle: 'right', target: consequenceId, targetHandle: 'top' });
   graph = add(graph, '07/11/26', mistakeId, 'Consequence');
   const label = graph.edges[0].data.labelPosition;
   assert.ok(label, 'manual route has a clear label position after adding a branch');
   for (const node of graph.nodes) {
     assert.ok(label.x + 31 <= node.position.x || label.x - 31 >= node.position.x + 160 ||
-      label.y + 23 <= node.position.y || label.y - 23 >= node.position.y + 64);
+      label.y + 23 <= node.position.y || label.y - 23 >= node.position.y + nodeHeight(node));
+  }
+});
+
+test('Consequence cannot point to Mistake/Milestone/Success through automatic creation; rejection preserves content', () => {
+  let graph = add(empty(), '01/11/26');
+  graph = add(graph, '02/11/26', graph.nodes[0].id, 'Consequence');
+  const parent = graph.nodes[1];
+  for (const kind of ['Mistake', 'Milestone', 'Success']) for (const date of ['02/11/26', '03/11/26']) {
+    const snapshot = JSON.stringify(graph);
+    assert.throws(() => add(graph, date, parent.id, kind), /Consequence nodes cannot connect/);
+    assert.equal(JSON.stringify(graph), snapshot);
+  }
+});
+
+test('same-date manual arrows preserve chosen direction and can recreate every permitted automatic type pair', () => {
+  for (const sourceKind of NODE_KINDS) for (const targetKind of NODE_KINDS) {
+    if ((sourceKind === 'Mistake' && targetKind !== 'Consequence') ||
+      (sourceKind === 'Consequence' && ['Mistake', 'Milestone', 'Success'].includes(targetKind)) ||
+      (targetKind === 'Consequence' && !['Mistake', 'Action'].includes(sourceKind))) continue;
+    let graph = sourceKind === 'Consequence' ? add(empty(), '06/11/26') : empty();
+    graph = add(graph, '07/11/26', graph.nodes[0]?.id, sourceKind);
+    const source = graph.nodes.at(-1).id;
+    graph = add(graph, '07/11/26', source, targetKind);
+    const edge = graph.edges.at(-1), target = graph.nodes.at(-1).id;
+    const disconnected = deleteEdge(graph, edge.id);
+    const reconnected = connectNodes(disconnected, { source, target });
+    assert.equal(reconnected.nodes, disconnected.nodes);
+    assert.equal(reconnected.edges.at(-1).source, source);
+    assert.equal(reconnected.edges.at(-1).target, target);
+    assert.equal(reconnected.edges.at(-1).data.days, 0);
   }
 });

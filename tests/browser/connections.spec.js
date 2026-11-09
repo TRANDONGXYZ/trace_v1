@@ -7,7 +7,7 @@ async function create(page, date, kind = 'Action') {
   await expect(page.getByRole('main')).toBeVisible();
   await page.keyboard.type('/n'); await page.keyboard.press('Enter');
   await page.getByLabel('Type', { exact: true }).selectOption(kind);
-  await page.getByLabel('Mistake', { exact: true }).fill('Lost focus');
+  await page.locator('#mistake').fill('Lost focus');
   await page.getByLabel('Time', { exact: true }).fill(date);
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).not.toBeVisible();
@@ -117,7 +117,7 @@ test('double-click highlights every incoming path, excludes descendants, clears 
   await page.screenshot({ path: 'test-results/upstream-chain.png' });
 });
 
-test('automatic edges can be deleted individually and manual graph node deletion still cascades', async ({ page }) => {
+test('automatic edges delete individually and node deletion preserves all descendants and their other connections', async ({ page }) => {
   await page.goto('/');
   await create(page, '01/11/26');
   await nodes(page).first().click(); await create(page, '03/11/26', 'Action');
@@ -128,11 +128,12 @@ test('automatic edges can be deleted individually and manual graph node deletion
   await expect(nodes(page)).toHaveCount(3);
   await expect(edges(page)).toHaveCount(1);
   expect(await nodes(page).evaluateAll(elements => elements.map(el => el.style.transform))).toEqual(transforms);
-  await diamond(page);
+  const { before, ids } = await diamond(page);
   await nodes(page).nth(3).dblclick();
   await nodes(page).first().click(); await page.keyboard.press('Delete');
-  await expect(nodes(page)).toHaveCount(1);
-  await expect(edges(page)).toHaveCount(0);
-  await expect(nodes(page).first()).toHaveAttribute('aria-label', 'Goal, 11/11/26');
+  await expect(nodes(page)).toHaveCount(5);
+  await expect(edges(page)).toHaveCount(3);
+  expect(await nodes(page).evaluateAll(elements => elements.map(el => el.style.transform))).toEqual(before.slice(1));
+  expect(await nodes(page).evaluateAll(elements => elements.map(el => el.getAttribute('data-id')))).toEqual(ids.slice(1));
   await expect(page.locator('.chain-highlighted')).toHaveCount(0);
 });

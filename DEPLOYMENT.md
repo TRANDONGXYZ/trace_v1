@@ -90,6 +90,8 @@ Check the log ends with deployment of **trace**, then open the original URL. For
 
 ## Verification
 
+The November 9 interaction/rule update is **local only, not deployed**. It passed 99 unit/security tests, 50 whiteboard browser tests, 5 production-bundle browser checks with mocked AI, the production build and Wrangler dry run. The existing Worker name/URL, bindings and AI processing logic are unchanged. Deploy only when ready to publish this tested source; the November 8 version below remains the last deployment performed in this session.
+
 Verified on November 8, 2026: production build and Wrangler dry run succeeded; **93 unit/security tests, 42 whiteboard browser regressions, and all 8 public production checks passed**. The public checks ran against the original `trace.trandongxzy.workers.dev` URL and included real Vietnamese inference, cancellation and API guards. Deployed Worker version: `36dd2e85-6c36-43fe-b8bd-7a29e625baca`. Local API startup and loopback validation also passed. This was a direct CLI deployment, not a claim that a new GitHub build has already run.
 
 ```powershell

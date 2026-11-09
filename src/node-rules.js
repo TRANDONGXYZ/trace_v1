@@ -9,6 +9,9 @@ export function creationTypeError(kind, selectedKind) {
 }
 
 export function connectionTypeError(sourceKind, targetKind) {
+  if (sourceKind === 'Consequence' && ['Mistake', 'Milestone', 'Success'].includes(targetKind)) {
+    return 'Consequence nodes cannot connect to Mistake, Milestone, or Success nodes.';
+  }
   if (sourceKind === 'Mistake' && targetKind !== 'Consequence') {
     return 'Mistake nodes can only connect to Consequence nodes.';
   }
@@ -16,4 +19,10 @@ export function connectionTypeError(sourceKind, targetKind) {
     return 'Consequence nodes can only receive connections from Mistake or Action nodes.';
   }
   return '';
+}
+
+// Equal dates retain the requested direction. Different dates retain the
+// existing earlier-to-later normalization; types are checked after ordering.
+export function connectionOrder(a, b) {
+  return a.data.time <= b.data.time ? [a, b] : [b, a];
 }

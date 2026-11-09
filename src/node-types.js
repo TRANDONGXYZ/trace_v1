@@ -5,8 +5,8 @@ export const NODE_APPEARANCE = {
     left: 0, right: 160,
   },
   Consequence: {
-    shape: 'rectangle', fill: '#fff0a1', stroke: '#a58d2d',
-    path: 'M 1 1 H 159 V 63 H 1 Z',
+    shape: 'rectangle', fill: '#f6b26b', stroke: '#b56a22', height: 96,
+    path: 'M 1 1 H 159 V 95 H 1 Z',
     left: 0, right: 160,
   },
   Action: {
@@ -38,6 +38,7 @@ export const NODE_APPEARANCE = {
 };
 
 export const NODE_KINDS = Object.keys(NODE_APPEARANCE);
+export const nodeHeight = node => NODE_APPEARANCE[node.data.kind]?.height ?? 64;
 export const DESCRIPTION_LIMIT = 500;
 const characters = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 

@@ -55,7 +55,7 @@ async function open(page) { await page.getByRole('button', { name: 'Mistake over
 async function create(page, kind, mistake) {
   await page.keyboard.type('/n'); await page.keyboard.press('Enter');
   await page.getByLabel('Type', { exact: true }).selectOption(kind);
-  await page.getByLabel('Mistake', { exact: true }).fill(mistake);
+  await page.locator('#mistake').fill(mistake);
   await page.getByLabel('Time', { exact: true }).fill('07/11/26');
   await page.keyboard.press('Enter'); await expect(page.getByRole('dialog')).not.toBeVisible();
 }

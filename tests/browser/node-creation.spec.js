@@ -13,7 +13,7 @@ async function open(page) {
 async function create(page, kind, date, mistake = 'Lost focus') {
   await open(page);
   await page.getByLabel('Type', { exact: true }).selectOption(kind);
-  await page.getByLabel('Mistake', { exact: true }).fill(mistake);
+  await page.locator('#mistake').fill(mistake);
   await page.getByLabel('Time', { exact: true }).fill(date);
   await page.keyboard.press('Enter');
   await expect(page.getByRole('dialog')).not.toBeVisible();
@@ -22,7 +22,7 @@ async function create(page, kind, date, mistake = 'Lost focus') {
 test('Type receives initial focus, Tab follows field order, required text/date validate, and Enter submits', async ({ page }) => {
   await page.goto('/'); await open(page);
   const type = page.getByLabel('Type', { exact: true });
-  const mistake = page.getByLabel('Mistake', { exact: true });
+  const mistake = page.locator('#mistake');
   const time = page.getByLabel('Time', { exact: true });
   const description = page.getByLabel('Description', { exact: true });
   await expect(type.locator('option')).toHaveText(types);
@@ -33,7 +33,7 @@ test('Type receives initial focus, Tab follows field order, required text/date v
   await page.keyboard.press('Tab'); await expect(type).toBeFocused();
   await page.keyboard.press('Shift+Tab'); await expect(page.getByRole('button', { name: 'Close' })).toBeFocused();
   await page.keyboard.press('Shift+Tab'); await expect(description).toBeFocused();
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('Control+Enter');
   await expect(mistake).toBeFocused();
   await expect(page.getByRole('dialog')).toBeVisible();
   await expect(nodes(page)).toHaveCount(0);
@@ -45,7 +45,7 @@ test('Type receives initial focus, Tab follows field order, required text/date v
   await expect(page.getByRole('alert')).toHaveText('Enter a valid date in DD/MM/YY format.');
   await time.fill('07/11/26');
   await page.keyboard.press('Tab'); await description.fill('I interrupted another person.');
-  await page.keyboard.press('Enter');
+  await page.keyboard.press('Control+Enter');
   await expect(page.getByRole('dialog')).not.toBeVisible();
   await expect(nodes(page)).toHaveCount(1);
   await expect(nodes(page).first().locator('.node-mistake')).toHaveText('Lost my composure');
@@ -57,7 +57,7 @@ test('all seven node shapes, colors, selection outlines, and connection points r
   await page.setViewportSize({ width: 1100, height: 1400 });
   await page.goto('/');
   const expected = [
-    ['arrow-rectangle', 'rgb(246, 170, 166)'], ['rectangle', 'rgb(255, 240, 161)'],
+    ['arrow-rectangle', 'rgb(246, 170, 166)'], ['rectangle', 'rgb(246, 178, 107)'],
     ['hexagon', 'rgb(118, 167, 238)'], ['triangle', 'rgb(255, 240, 161)'],
     ['cylinder', 'rgb(201, 233, 248)'], ['diamond', 'rgb(203, 234, 197)'],
     ['circle', 'rgb(25, 107, 58)'],
@@ -66,7 +66,7 @@ test('all seven node shapes, colors, selection outlines, and connection points r
     if (types[i] === 'Consequence') await nodes(page).first().click();
     await open(page);
     await page.getByLabel('Type', { exact: true }).selectOption(types[i]);
-    await page.getByLabel('Mistake', { exact: true }).fill(`Lost focus ${i + 1}`);
+    await page.locator('#mistake').fill(`Lost focus ${i + 1}`);
     await page.getByLabel('Time', { exact: true }).fill('07/11/26');
     // A fully filled form must also submit when Enter is pressed from Type.
     if (i === types.length - 1) await page.getByLabel('Type', { exact: true }).focus();
@@ -114,9 +114,9 @@ test('Description is optional and enforces 500 characters for typing, pasted wor
   const emoji = '👍🏽'.repeat(500);
   await description.fill(emoji + 'extra');
   await expect(description).toHaveValue(emoji);
-  await page.getByLabel('Mistake', { exact: true }).fill('Defended my opinion');
+  await page.locator('#mistake').fill('Defended my opinion');
   await page.getByLabel('Time', { exact: true }).fill('07/11/26');
-  await description.focus(); await page.keyboard.press('Enter');
+  await description.focus(); await page.keyboard.press('Control+Enter');
   await expect(page.getByRole('dialog')).not.toBeVisible();
   await expect(nodes(page).first().locator('.event-node')).toHaveAttribute('title', `Mistake\nDefended my opinion\n07/11/26\n${emoji}`);
   await create(page, 'Goal', '08/11/26');
@@ -163,8 +163,8 @@ test('new shape ports preserve automatic/manual connections, incoming-chain high
   await expect(edges).toHaveCount(3);
   expect(await nodes(page).evaluateAll(elements => elements.map(el => el.style.transform))).toEqual(transforms);
   await nodes(page).first().click(); await page.keyboard.press('Delete');
-  await expect(nodes(page)).toHaveCount(0);
-  await expect(edges).toHaveCount(0);
+  await expect(nodes(page)).toHaveCount(3);
+  await expect(edges).toHaveCount(2);
 });
 
 test.describe('computer-local date defaults', () => {
@@ -177,7 +177,7 @@ test.describe('computer-local date defaults', () => {
     await page.clock.setFixedTime(new Date('2027-01-01T09:30:00Z'));
     await open(page);
     await expect(page.getByLabel('Time', { exact: true })).toHaveValue('01/01/27');
-    await expect(page.getByLabel('Mistake', { exact: true })).toHaveValue('');
+    await expect(page.locator('#mistake')).toHaveValue('');
     await expect(page.getByLabel('Description', { exact: true })).toHaveValue('');
   });
 });
