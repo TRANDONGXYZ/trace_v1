@@ -2,6 +2,7 @@
 export const initialHistory = present => ({ past: [], present, future: [] });
 
 export function diagramHistory(history, action) {
+  if (action.type === 'replace') return initialHistory(action.value);
   if (action.type === 'undo') {
     if (!history.past.length) return history;
     return { past: history.past.slice(0, -1), present: history.past.at(-1), future: [history.present, ...history.future] };

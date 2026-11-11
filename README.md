@@ -16,13 +16,13 @@ npm run dev -- --open
 
 ## Use
 
-- Type `/n`, then press Enter. Type receives focus first. Select a node type, enter the required text (labeled with that type), confirm Time (DD/MM/YY), and optionally enter a Description. Enter submits from Type/text/Time; in Description, Enter inserts a newline and **Ctrl+Enter** creates the node.
+- Tap **+** beside Mistake overview, or type `/n` and press Enter. Both open the same creation form with Type focused first. Select a node type, enter the required text (labeled with that type), confirm Time (DD/MM/YY), and optionally enter a Description. Enter submits from Type/text/Time; in Description, Enter inserts a newline and **Ctrl+Enter** creates the node. A Create node button is also shown on mobile/touch screens.
 - Tab follows Type → event text → Time → Description. Time starts with today's computer-local calendar date each time the popup opens. The multiline Description accepts at most **500 user-perceived characters**, not words; emoji and accented characters remain intact. Stored text still uses the compatible `data.mistake` key.
-- Nodes show type, event text and date; hover for full text/Description. All seven types use 160 × 96 layout boxes and retain their shapes/colors; Success stays circular. Vertical stacks leave a 32-unit clear gap. Existing nodes remain read-only.
+- Nodes show type, up to two lines of event text and date; longer visible text is truncated while full stored text is preserved. Hover for full text/Description. All seven types use 160 × 96 layout boxes and retain their shapes/colors with subtle corner rounding; Success stays circular. Vertical stacks leave a 32-unit clear gap. Existing nodes remain read-only.
 - Click a node before creating another to connect them. Click empty canvas to create an independent node.
-- Consequence requires a selected Mistake or Action. With a Mistake selected, Consequence is the default and only allowed successor type. Its date must be equal or later; an earlier date shows **“A Consequence must occur after the Mistake.”** without changing the diagram. Consequence cannot point to Mistake, Milestone or Success.
+- Consequence requires a selected Mistake, Action or Consequence. Consequence → Consequence is allowed. With a Mistake selected, Consequence is the default and only allowed successor type. Its date must be equal or later; an earlier date shows **“A Consequence must occur after the Mistake.”** without changing the diagram. Consequence cannot point to Mistake, Milestone or Success.
 - Click an edge or its label to highlight it; click it again to clear the highlight.
-- Drag between top/side ports to connect existing nodes. Multiple incoming/outgoing edges are supported. Mistake can only point to Consequence; Consequence can only receive from Mistake or Action and cannot point to Mistake/Milestone/Success. Different-date arrows normalize from earlier to later. Equal dates retain drag direction and use the same directed type rules as automatic creation. Self-links, duplicate directed links and invalid relationships are rejected.
+- Drag between top/side ports to connect existing nodes. Multiple incoming/outgoing edges are supported. Mistake can only point to Consequence; Consequence can only receive from Mistake, Action or Consequence and cannot point to Mistake/Milestone/Success. Different-date arrows normalize from earlier to later. Equal dates retain drag direction and use the same directed type rules as automatic creation. Self-links, duplicate directed links and invalid relationships are rejected.
 - Click an edge or its label, then press Delete to remove only that edge. Nodes, other edges, and node positions remain unchanged.
 - Double-click a node to highlight that node and every upstream node and arrow leading to it, including all paths that merge into it. Descendants and unrelated nodes stay unhighlighted. Click anywhere outside that chain to clear the chain highlight. Clicking within it keeps the chain highlighted.
 - Drag empty canvas to pan. Ordinary wheel/two-finger scrolling pans using native scroll direction (the previous sign inversion is removed in both axes). With natural trackpad scrolling, fingers down/up/right/left move the canvas in that same direction. **Ctrl+wheel** and supported **pinch gestures** still zoom. Double-click never zooms; on a node it still highlights the incoming chain.
@@ -34,7 +34,9 @@ npm run dev -- --open
 
 The diagram saves automatically to this browser's localStorage **3 seconds after the latest content change**. A small checkmark confirms a successful save and disappears when content changes again. Reopening the same origin/profile restores nodes, edges and associated data. Older layouts reflow for taller cards while retaining text, dates, IDs and relationships; restoration neither writes storage nor creates history. The next content save records the current layout marker so later reloads preserve exact coordinates, including deletion survivors. Panning, zooming, selection, highlighting and cancelled forms do not save or reset the timer.
 
-Storage is local to the browser profile and website address (including the port). The public URL cannot automatically read diagrams from the old localhost origin; that previous data stays at its old address. Clearing browser site data removes the saved diagram. No cloud database or diagram backup is used. Only relevant text is sent to Cloudflare for requested AI analysis, and the backend does not save diagram content. If browser storage is unavailable/full, the diagram remains usable and the checkmark does not confirm unsaved changes.
+Tap the **Settings gear** at bottom-right for **Export Data** / **Import Data**. Export saves the current diagram, including pending unsaved edits, as a versioned JSON file. Supported browsers offer a native save-location dialog; others download the file. Import validates the whole file, asks before replacing the current board, persists it, and clears prior undo/redo history. Invalid files or failed storage leave existing data unchanged. Backups are **not encrypted**; store them securely. The file limit is 25 MiB, and browser storage may be smaller. Large diagrams can briefly pause processing/rendering. See [Backup schema](docs/backup-schema.md) for compatibility and validation details.
+
+Storage is local to the browser profile and website address (including the port). The public URL cannot automatically read diagrams from the old localhost origin; that previous data stays at its old address and can be transferred with a manual backup. Clearing browser site data removes the saved diagram. No cloud database, synchronization or automatic cloud backup is used. Backup files are processed locally without inference or uploads. Only relevant text is sent to Cloudflare for requested AI analysis, and the backend does not save diagram content. If browser storage is unavailable/full, the diagram remains usable and the checkmark does not confirm unsaved changes.
 
 ## Optional local-only Ollama development
 
@@ -82,7 +84,7 @@ Up to 32 completed cluster explanations are cached by exact evidence/model/promp
 | Type | Shape | Color |
 | --- | --- | --- |
 | Mistake | Arrow-rectangle | Red |
-| Consequence | Rectangle | Yellow |
+| Consequence | Rectangle | Orange |
 | Action | Hexagon | Blue |
 | Blocked | Triangle | Yellow |
 | Goal | Cylinder | Light blue |

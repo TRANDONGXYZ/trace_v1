@@ -1,23 +1,24 @@
+import { roundedPolygon } from './node-shapes.js';
 export const NODE_HEIGHT = 96;
 export const NODE_APPEARANCE = {
   Mistake: {
     shape: 'arrow-rectangle', fill: '#f6aaa6', stroke: '#b6453c',
-    path: 'M 1 1 H 135 L 159 48 L 135 95 H 1 Z',
+    path: roundedPolygon([[1, 1], [135, 1], [159, 48], [135, 95], [1, 95]]),
     left: 0, right: 160,
   },
   Consequence: {
     shape: 'rectangle', fill: '#f6b26b', stroke: '#b56a22', height: 96,
-    path: 'M 1 1 H 159 V 95 H 1 Z',
+    path: roundedPolygon([[1, 1], [159, 1], [159, 95], [1, 95]]),
     left: 0, right: 160,
   },
   Action: {
     shape: 'hexagon', fill: '#76a7ee', stroke: '#3568af',
-    path: 'M 21 1 H 139 L 159 48 L 139 95 H 21 L 1 48 Z',
+    path: roundedPolygon([[21, 1], [139, 1], [159, 48], [139, 95], [21, 95], [1, 48]]),
     left: 0, right: 160,
   },
   Blocked: {
     shape: 'triangle', fill: '#fff0a1', stroke: '#a58d2d',
-    path: 'M 80 1 L 159 95 H 1 Z',
+    path: roundedPolygon([[80, 1], [159, 95], [1, 95]]),
     left: 40, right: 120,
   },
   Goal: {
@@ -28,7 +29,7 @@ export const NODE_APPEARANCE = {
   },
   Milestone: {
     shape: 'diamond', fill: '#cbeac5', stroke: '#709667',
-    path: 'M 80 1 L 159 48 L 80 95 L 1 48 Z',
+    path: roundedPolygon([[80, 1], [159, 48], [80, 95], [1, 48]]),
     left: 0, right: 160,
   },
   Success: {

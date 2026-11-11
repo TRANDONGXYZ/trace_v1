@@ -1,6 +1,6 @@
 # Trace — User Stories and Acceptance Criteria
 
-**Status:** Acceptance baseline updated for verified requested changes · **Reviewed:** 9 November 2026
+**Status:** Acceptance baseline including local backup and mobile usability · **Reviewed:** 10 November 2026
 
 These stories consolidate observed capabilities. They are not PO approval of the implementation. Central business rules are defined once in the [PRD](prd.md#business-rules); criteria below reference those rules. **Review flags** point to unresolved exceptions in [Requirements Review](requirements-review.md).
 
@@ -12,13 +12,13 @@ As a person reflecting on an experience, I want to record its type, date and tex
 
 Acceptance criteria:
 
-1. With focus outside a form, typing `/n` then Enter opens the creation dialog. Type receives focus; Tab traverses Type → event text → Time → Description. Enter submits from Type/text/Time; in Description, Enter inserts a newline and Ctrl+Enter submits. Escape/Close creates nothing.
+1. The desktop shortcut `/n` then Enter and the tappable **+** beside Mistake overview open the identical focused form with the selected context. Tab traverses Type → event text → Time → Description. Enter submits outside Description; there it inserts a newline and Ctrl+Enter submits. The shared mobile form also exposes Create node. Escape/Close creates nothing.
 2. Available types, appearance and field validation follow **BR-01/02**. Invalid or whitespace-only required text and invalid calendar dates keep the dialog open and identify an error; successful creation adds exactly one node and closes it.
 3. The date defaults to the computer's current local calendar date each time the dialog opens. Description input preserves complete user-perceived characters at its limit.
 4. Selection constrains available types under **BR-03**; submission rechecks the restrictions. With a Mistake selected, Consequence is the default and only allowed successor type.
 5. Changing Type immediately changes the required text label without losing entered text. Description is visibly multiline, optional, and retains newlines within its existing character limit.
 6. Earlier-dated Consequence creation from Mistake shows the exact **BR-03** error, keeps the dialog open with Time focused, and leaves content unchanged; equal/later dates work. All seven types render at the taller dimensions under **BR-01**, retaining their shapes/colors, including restored older records.
-7. The card shows type, shortened text and date; hovering exposes full text and Description. Existing cards cannot be edited or dragged. The internal text key and stored data stay compatible.
+7. Each card displays up to two lines of main text, visually truncating overflow without altering stored content. Full text/Description remain in hover details. Minimal rounding retains the seven recognizable shapes; existing colors/dimensions remain. Cards stay read-only and fixed in place.
 
 Remaining review: **M-01** (taxonomy/limits). Evidence: [creation UI](../src/main.jsx), [form tests](../tests/browser/node-creation.spec.js), [updated interactions](../tests/browser/interaction-updates.spec.js).
 
@@ -46,8 +46,9 @@ Acceptance criteria:
 2. Dragging between top or side ports connects existing nodes when **BR-03** permits it. Fan-out and multiple incoming paths are supported.
 3. Different-date drag direction is normalized to chronological order. Self-links, missing endpoints, duplicates and invalid port/type combinations leave the graph unchanged.
 4. Equal-date links retain the requested direction and obey the same type rules as automatic links. A removed automatic same-date Action → Goal edge can be recreated manually; Consequence → Mistake/Milestone/Success is rejected. Rejection creates no content/history entry.
-5. Manual linking does not move existing nodes or change dates. Existing edges cannot be reconnected by dragging their endpoints.
-6. Arrows show direction; labels use **BR-05**. Clicking a label selects its edge.
+5. Consequence → Consequence can be created from an existing selection or linked manually. Equal-date row/branch placement and different-date chronological normalization remain unchanged.
+6. Manual linking does not move existing nodes or change dates. Existing edges cannot be reconnected by dragging their endpoints.
+7. Arrows show direction; labels use **BR-05**. Clicking a label selects its edge.
 
 Resolved rule findings: **C-01/03**. Evidence: [connection model](../src/model.js), [connection tests](../tests/browser/connections.spec.js), [type-pair tests](../tests/model.test.js).
 
@@ -152,3 +153,19 @@ Acceptance criteria:
 5. Restored content uses the normal save debounce. Undo back to the saved snapshot produces no unnecessary save. Reload restores saved content with a fresh session history; legacy field names remain readable.
 
 Evidence: [history reducer](../src/diagram-history.js), [history tests](../tests/history.test.js), [interaction/save/compatibility scenarios](../tests/browser/interaction-updates.spec.js).
+
+### US-11 — Back up and restore the complete diagram
+
+As a diagram author, I want a portable local backup so I can protect my work or restore it on another device without an account or cloud storage.
+
+Acceptance criteria:
+
+1. The bottom-right gear opens Settings with only Export Data, Import Data and the plaintext privacy notice; both actions are usable on desktop/mobile.
+2. Export follows **BR-13**, including empty diagrams and pending unsaved changes. A download/native save contains complete recoverable data without UI/cache/history/secrets; original content and autosave timing remain unchanged.
+3. Selecting a valid file shows replacement confirmation and counts before any write or live change. Cancel leaves content intact. Invalid JSON/UTF-8, IDs, endpoints, constraints or unsupported versions show a clear error and no confirmation/partial import.
+4. Confirming performs one coordinated save/replace. An older pending autosave cannot overwrite the imported snapshot; no separate per-node writes occur. A storage failure preserves old live/saved content, pending autosave and history, and shows no success message.
+5. Successful import restores exact current-layout coordinates, fields, metadata and relationships; known legacy layouts/marked historical relationships follow the explicit compatibility policy. Reload retains the imported graph.
+6. Import clears prior history/selection/highlights; subsequent edits still undo/redo and autosave normally. An export → import → export round trip preserves all essential diagram information.
+7. Import/export does not upload files or trigger inference/analytics. Native picker cancellation does not silently start a download. Performance is measured on representative sizes without promising universal latency.
+
+Evidence: [codec tests](../tests/backup.test.js), [atomicity/download/performance tests](../tests/browser/backup.spec.js), [schema contract](backup-schema.md).

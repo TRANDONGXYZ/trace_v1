@@ -8,6 +8,7 @@ import { creationTypeError } from './node-rules.js';
 import { manualEdgePath } from './edge-routing.js';
 import { useLocalDiagram } from './use-local-diagram.js';
 import { MistakeOverview } from './MistakeOverview.jsx';
+import { SettingsDialog } from './SettingsDialog.jsx';
 import { NODE_WIDTH, axisAnchors, canConnectNodes, connectNodes, createEvent, deleteNode, deleteEdge, formatDate, formatMonth, monthTicks, parseDate, projectTime, upstreamChain } from './model.js';
 
 function EventNode({ data, selected }) {
@@ -117,7 +118,7 @@ function CreateDialog({ onCreate, onClose, selectedNode }) {
   };
   return <dialog ref={dialog} onCancel={onClose} aria-labelledby="create-title" onKeyDown={event => {
     if (event.key !== 'Tab') return;
-    const fields = [...dialog.current.querySelectorAll('select,input,textarea,button:not([hidden])')];
+    const fields = [...dialog.current.querySelectorAll('select,input,textarea,button:not([hidden])')].filter(field => field.getClientRects().length);
     if (event.shiftKey && document.activeElement === fields[0]) { event.preventDefault(); fields.at(-1).focus(); }
     if (!event.shiftKey && document.activeElement === fields.at(-1)) { event.preventDefault(); fields[0].focus(); }
   }}>
@@ -139,19 +140,20 @@ function CreateDialog({ onCreate, onClose, selectedNode }) {
       }} />
       {error && <p id="form-error" role="alert">{error.message}</p>}
       <p className="dialog-hint">Enter to create · Description: Enter for a new line, Ctrl+Enter to create · Esc to cancel</p>
-      <button type="submit" hidden>Create node</button>
+      <button type="submit" className="create-submit">Create node</button>
     </form>
   </dialog>;
 }
 
 function Whiteboard() {
-  const [graph, setGraph, saved, { undo, redo }] = useLocalDiagram();
+  const [graph, setGraph, saved, { undo, redo, importDiagram }] = useLocalDiagram();
   const [selectedId, setSelectedId] = useState(null);
   const [highlightedId, setHighlightedId] = useState(null);
   const [chainRootId, setChainRootId] = useState(null);
   const [command, setCommand] = useState('');
   const [creating, setCreating] = useState(false);
   const [overviewOpen, setOverviewOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const graphRef = useRef(graph);
   const selectedRef = useRef(selectedId);
   const highlightedRef = useRef(highlightedId);
@@ -163,6 +165,12 @@ function Whiteboard() {
   highlightedRef.current = highlightedId;
   const chain = useMemo(() => upstreamChain(graph, chainRootId), [graph, chainRootId]);
   const closeDialog = () => { setCreating(false); requestAnimationFrame(() => root.current?.focus()); };
+  const openCreate = () => { commandRef.current = ''; setCommand(''); setCreating(true); };
+  const replaceDiagram = imported => {
+    importDiagram(imported);
+    setSelectedId(null); setHighlightedId(null); setChainRootId(null);
+    setOverviewOpen(false); setCreating(false); commandRef.current = ''; setCommand('');
+  };
 
   useLayoutEffect(() => {
     const keydown = event => {
@@ -190,7 +198,7 @@ function Whiteboard() {
       if (event.key === '/') { event.preventDefault(); commandRef.current = '/'; setCommand('/'); }
       else if (event.key.toLowerCase() === 'n' && commandRef.current === '/') { event.preventDefault(); commandRef.current = '/n'; setCommand('/n'); }
       else if (event.key === 'Enter' && commandRef.current === '/n') {
-        event.preventDefault(); commandRef.current = ''; setCommand(''); setCreating(true);
+        event.preventDefault(); openCreate();
       } else if (event.key === 'Backspace' && commandRef.current) {
         event.preventDefault(); commandRef.current = commandRef.current.slice(0, -1); setCommand(commandRef.current);
       } else if (event.key.length === 1 || event.key === 'Enter') { commandRef.current = ''; setCommand(''); }
@@ -256,15 +264,22 @@ function Whiteboard() {
       <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#d7dce3" />
       <TimeAxes nodes={graph.nodes} />
     </ReactFlow>
-    {!graph.nodes.length && <div className="empty-hint">Type <kbd>/n</kbd> then <kbd>Enter</kbd> to create a node.</div>}
+    {!graph.nodes.length && <div className="empty-hint">Tap <strong>+</strong> or type <kbd>/n</kbd> then <kbd>Enter</kbd> to create a node.</div>}
     {!!graph.nodes.length && <div className="keyboard-hint"><kbd>/n</kbd> + <kbd>Enter</kbd> creates a node{selectedId ? ' · Delete removes selected node' : highlightedId ? ' · Delete removes selected edge' : ''}</div>}
-    <button type="button" className="overview-button" aria-haspopup="dialog" onClick={() => setOverviewOpen(true)}>Mistake overview</button>
+    <div className="board-tools">
+      <button type="button" className="create-button" aria-label="Create node" aria-haspopup="dialog" onClick={openCreate}>+</button>
+      <button type="button" className="overview-button" aria-haspopup="dialog" onClick={() => setOverviewOpen(true)}>Mistake overview</button>
+    </div>
+    <button type="button" className="settings-button" aria-label="Settings" aria-haspopup="dialog" onClick={() => setSettingsOpen(true)}>
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="m9 3-1 3-3 1-2 3 2 2-1 3 3 2 3-1 2 3h3l1-3 3-1 2-3-2-2 1-3-3-2-3 1-2-3Z" /><circle cx="12" cy="11" r="3" /></svg>
+    </button>
     {saved && <div className="save-confirmation" role="status" aria-label="All changes saved locally" title="All changes saved locally">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m5 12 4 4L19 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
     </div>}
     {command && <div className="command" role="status">{command}<span>Enter</span></div>}
     {creating && <CreateDialog onCreate={create} onClose={closeDialog} selectedNode={graph.nodes.find(node => node.id === selectedId)} />}
     {overviewOpen && <MistakeOverview nodes={graph.nodes} edges={graph.edges} onClose={() => { setOverviewOpen(false); requestAnimationFrame(() => root.current?.focus()); }} />}
+    {settingsOpen && <SettingsDialog getGraph={() => graphRef.current} onImport={replaceDiagram} onClose={() => { setSettingsOpen(false); requestAnimationFrame(() => root.current?.focus()); }} />}
   </main>;
 }
 

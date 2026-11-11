@@ -83,7 +83,7 @@ test('selected same-date creation uses a right row then stacks above the highest
   for (const sourceKind of NODE_KINDS) for (const targetKind of NODE_KINDS) {
     if ((sourceKind === 'Mistake' && targetKind !== 'Consequence') ||
       (sourceKind === 'Consequence' && ['Mistake', 'Milestone', 'Success'].includes(targetKind)) ||
-      (targetKind === 'Consequence' && !['Mistake', 'Action'].includes(sourceKind))) continue;
+      (targetKind === 'Consequence' && !['Mistake', 'Action', 'Consequence'].includes(sourceKind))) continue;
     let state = sourceKind === 'Consequence' ? add(empty(), '06/11/26') : empty();
     state = add(state, '07/11/26', state.nodes[0]?.id, sourceKind);
     const parentId = state.nodes.at(-1).id;
@@ -728,23 +728,23 @@ test('description length counts characters rather than words and retains complet
   }
 });
 
-test('Consequence creation requires explicit selection of a Mistake or Action', () => {
+test('Consequence creation requires explicit selection of a Mistake, Action or Consequence', () => {
   const state = add(empty(), '07/11/26', undefined, 'Mistake');
   const snapshot = JSON.stringify(state);
-  assert.throws(() => add(empty(), '08/11/26', undefined, 'Consequence'), /Select a Mistake or Action/);
-  assert.throws(() => add(state, '08/11/26', undefined, 'Consequence'), /Select a Mistake or Action/);
-  assert.throws(() => add(state, '08/11/26', 'missing', 'Consequence'), /Select a Mistake or Action/);
+  assert.throws(() => add(empty(), '08/11/26', undefined, 'Consequence'), /Select a Mistake, Action, or Consequence/);
+  assert.throws(() => add(state, '08/11/26', undefined, 'Consequence'), /Select a Mistake, Action, or Consequence/);
+  assert.throws(() => add(state, '08/11/26', 'missing', 'Consequence'), /Select a Mistake, Action, or Consequence/);
   assert.equal(JSON.stringify(state), snapshot);
   for (const kind of NODE_KINDS) {
     let graph = kind === 'Consequence' ? add(empty(), '06/11/26') : empty();
     graph = add(graph, '07/11/26', graph.nodes[0]?.id, kind);
     const parent = graph.nodes.at(-1);
     const before = JSON.stringify(graph);
-    if (['Mistake', 'Action'].includes(kind)) {
+    if (['Mistake', 'Action', 'Consequence'].includes(kind)) {
       const next = add(graph, '08/11/26', parent.id, 'Consequence');
       assert.equal(next.edges.at(-1).source, parent.id);
       assert.equal(next.nodes.at(-1).data.kind, 'Consequence');
-    } else assert.throws(() => add(graph, '08/11/26', parent.id, 'Consequence'), /Select a Mistake or Action/);
+    } else assert.throws(() => add(graph, '08/11/26', parent.id, 'Consequence'), /Select a Mistake, Action, or Consequence/);
     assert.equal(JSON.stringify(graph), before);
   }
 });
@@ -827,7 +827,7 @@ test('all type pairs obey the same rules on equal dates and normalize only diffe
     ], edges: [] };
     const allowed = (sourceKind !== 'Mistake' || targetKind === 'Consequence') &&
       (sourceKind !== 'Consequence' || !['Mistake', 'Milestone', 'Success'].includes(targetKind)) &&
-      (targetKind !== 'Consequence' || ['Mistake', 'Action'].includes(sourceKind));
+      (targetKind !== 'Consequence' || ['Mistake', 'Action', 'Consequence'].includes(sourceKind));
     for (const [source, target] of [['earlier', 'later'], ['later', 'earlier']]) {
       assert.equal(canConnectNodes(graph, { source, target }), allowed, `${sourceKind} -> ${targetKind}`);
       const next = connectNodes(graph, { source, target });
@@ -925,7 +925,7 @@ test('same-date manual arrows preserve chosen direction and can recreate every p
   for (const sourceKind of NODE_KINDS) for (const targetKind of NODE_KINDS) {
     if ((sourceKind === 'Mistake' && targetKind !== 'Consequence') ||
       (sourceKind === 'Consequence' && ['Mistake', 'Milestone', 'Success'].includes(targetKind)) ||
-      (targetKind === 'Consequence' && !['Mistake', 'Action'].includes(sourceKind))) continue;
+      (targetKind === 'Consequence' && !['Mistake', 'Action', 'Consequence'].includes(sourceKind))) continue;
     let graph = sourceKind === 'Consequence' ? add(empty(), '06/11/26') : empty();
     graph = add(graph, '07/11/26', graph.nodes[0]?.id, sourceKind);
     const source = graph.nodes.at(-1).id;

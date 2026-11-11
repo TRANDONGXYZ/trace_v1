@@ -33,7 +33,7 @@ async function drag(page, sourceIndex, sourceHandle, targetIndex, targetHandle) 
   await page.mouse.up();
 }
 
-test('Consequence requires a selected Mistake/Action and Mistake offers only Consequence as its successor', async ({ page }) => {
+test('Consequence requires a selected Mistake/Action/Consequence and Mistake offers only Consequence as successor', async ({ page }) => {
   await page.goto('/'); await open(page);
   await expect(page.getByLabel('Type', { exact: true }).locator('option').filter({ hasText: /^Consequence$/ })).toBeDisabled();
   await page.keyboard.press('Escape');
@@ -47,7 +47,7 @@ test('Consequence requires a selected Mistake/Action and Mistake offers only Con
   await expect(type.locator('option').filter({ hasText: /^Consequence$/ })).toBeEnabled();
   await finish(page, '07/11/26');
   await nodes(page).nth(1).click(); await open(page);
-  await expect(page.getByLabel('Type', { exact: true }).locator('option').filter({ hasText: /^Consequence$/ })).toBeDisabled();
+  await expect(page.getByLabel('Type', { exact: true }).locator('option').filter({ hasText: /^Consequence$/ })).toBeEnabled();
   await page.keyboard.press('Escape');
   await page.mouse.click(1100, 800);
   await create(page, 'Goal', '10/11/26');
