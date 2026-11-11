@@ -9,6 +9,9 @@ import { manualEdgePath } from './edge-routing.js';
 import { useLocalDiagram } from './use-local-diagram.js';
 import { MistakeOverview } from './MistakeOverview.jsx';
 import { SettingsDialog } from './SettingsDialog.jsx';
+import { AnalyticsPage } from './AnalyticsPage.jsx';
+import { AppearanceProvider } from './AppearanceProvider.jsx';
+import { initializeAppearance } from './appearance.js';
 import { NODE_WIDTH, axisAnchors, canConnectNodes, connectNodes, createEvent, deleteNode, deleteEdge, formatDate, formatMonth, monthTicks, parseDate, projectTime, upstreamChain } from './model.js';
 
 function EventNode({ data, selected }) {
@@ -57,8 +60,8 @@ function TimeEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targ
   }
   const markerId = `arrow-${id}`;
   return <>
-    <defs><marker id={markerId} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill={highlighted ? '#2459cb' : '#67707c'} /></marker></defs>
-    <BaseEdge id={id} path={path} markerEnd={`url(#${markerId})`} interactionWidth={24} style={{ stroke: highlighted ? '#2459cb' : '#67707c', strokeWidth: highlighted ? 3 : 1.6 }} />
+    <defs><marker id={markerId} viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill={highlighted ? 'var(--accent)' : 'var(--edge)'} /></marker></defs>
+    <BaseEdge id={id} path={path} markerEnd={`url(#${markerId})`} interactionWidth={24} style={{ stroke: highlighted ? 'var(--accent)' : 'var(--edge)', strokeWidth: highlighted ? 3 : 1.6 }} />
     <g className={`edge-label ${highlighted ? 'highlighted' : ''}`} transform={`translate(${labelX},${labelY})`} data-testid={`label-${id}`}>
       <title>{data.days} {data.days === 1 ? 'day' : 'days'} elapsed</title>
       <rect x="-31" y="-23" width="62" height="46" rx="4" />
@@ -154,6 +157,8 @@ function Whiteboard() {
   const [creating, setCreating] = useState(false);
   const [overviewOpen, setOverviewOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [analyticsOpen, setAnalyticsOpen] = useState(false);
+  const analyticsButton = useRef(null);
   const graphRef = useRef(graph);
   const selectedRef = useRef(selectedId);
   const highlightedRef = useRef(highlightedId);
@@ -174,6 +179,7 @@ function Whiteboard() {
 
   useLayoutEffect(() => {
     const keydown = event => {
+      if (analyticsOpen) return;
       if (event.target.closest?.('input,textarea,select,dialog,[contenteditable="true"]')) return;
       if (event.isComposing) return;
       if (event.ctrlKey && !event.altKey && !event.metaKey && !event.shiftKey && ['z', 'y'].includes(event.key.toLowerCase())) {
@@ -205,7 +211,7 @@ function Whiteboard() {
     };
     document.addEventListener('keydown', keydown);
     return () => document.removeEventListener('keydown', keydown);
-  }, [undo, redo, setGraph]);
+  }, [undo, redo, setGraph, analyticsOpen]);
 
   const create = fields => {
     const rect = root.current.getBoundingClientRect();
@@ -232,7 +238,8 @@ function Whiteboard() {
     zIndex: e.id === highlightedId || chain.edgeIds.has(e.id) ? 1000 : 0,
     data: { ...e.data, highlighted: e.id === highlightedId || chain.edgeIds.has(e.id) },
   })), [graph.edges, highlightedId, chain]);
-  return <main className="whiteboard" ref={root} tabIndex={-1} aria-label="Timeline whiteboard"
+  return <><main className="whiteboard" ref={root} tabIndex={-1} aria-label="Timeline whiteboard"
+    inert={analyticsOpen} aria-hidden={analyticsOpen ? true : undefined} style={analyticsOpen ? { visibility: 'hidden' } : undefined}
     onPointerDownCapture={event => {
       if (!chainRootId) return;
       const node = event.target.closest?.('.react-flow__node');
@@ -261,7 +268,7 @@ function Whiteboard() {
       onNodeClick={(_, node) => { setSelectedId(node.id); setHighlightedId(null); }}
       onEdgeClick={(event, edge) => { event.stopPropagation(); setHighlightedId(current => current === edge.id ? null : edge.id); setSelectedId(null); }}
       onPaneClick={() => { setSelectedId(null); setHighlightedId(null); setChainRootId(null); }}>
-      <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="#d7dce3" />
+      <Background variant={BackgroundVariant.Dots} gap={20} size={1} color="var(--grid)" />
       <TimeAxes nodes={graph.nodes} />
     </ReactFlow>
     {!graph.nodes.length && <div className="empty-hint">Tap <strong>+</strong> or type <kbd>/n</kbd> then <kbd>Enter</kbd> to create a node.</div>}
@@ -269,6 +276,7 @@ function Whiteboard() {
     <div className="board-tools">
       <button type="button" className="create-button" aria-label="Create node" aria-haspopup="dialog" onClick={openCreate}>+</button>
       <button type="button" className="overview-button" aria-haspopup="dialog" onClick={() => setOverviewOpen(true)}>Mistake overview</button>
+      <button type="button" className="overview-button" ref={analyticsButton} onClick={() => { commandRef.current = ''; setCommand(''); setAnalyticsOpen(true); }}>Analytics</button>
     </div>
     <button type="button" className="settings-button" aria-label="Settings" aria-haspopup="dialog" onClick={() => setSettingsOpen(true)}>
       <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true"><path d="m9 3-1 3-3 1-2 3 2 2-1 3 3 2 3-1 2 3h3l1-3 3-1 2-3-2-2 1-3-3-2-3 1-2-3Z" /><circle cx="12" cy="11" r="3" /></svg>
@@ -280,7 +288,12 @@ function Whiteboard() {
     {creating && <CreateDialog onCreate={create} onClose={closeDialog} selectedNode={graph.nodes.find(node => node.id === selectedId)} />}
     {overviewOpen && <MistakeOverview nodes={graph.nodes} edges={graph.edges} onClose={() => { setOverviewOpen(false); requestAnimationFrame(() => root.current?.focus()); }} />}
     {settingsOpen && <SettingsDialog getGraph={() => graphRef.current} onImport={replaceDiagram} onClose={() => { setSettingsOpen(false); requestAnimationFrame(() => root.current?.focus()); }} />}
-  </main>;
+  </main>
+    {analyticsOpen && <AnalyticsPage nodes={graph.nodes} edges={graph.edges} onClose={() => {
+      setAnalyticsOpen(false); requestAnimationFrame(() => analyticsButton.current?.focus());
+    }} />}
+  </>;
 }
 
-createRoot(document.getElementById('root')).render(<React.StrictMode><ReactFlowProvider><Whiteboard /></ReactFlowProvider></React.StrictMode>);
+initializeAppearance();
+createRoot(document.getElementById('root')).render(<React.StrictMode><AppearanceProvider><ReactFlowProvider><Whiteboard /></ReactFlowProvider></AppearanceProvider></React.StrictMode>);

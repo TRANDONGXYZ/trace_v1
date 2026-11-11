@@ -1,6 +1,6 @@
 # Trace — Product Requirements Document
 
-**Status:** Current-state baseline; backup and usability changes verified locally · **Reviewed:** 10 November 2026
+**Status:** Current-state baseline including resizable analytics and appearance modes · **Reviewed:** 11 November 2026
 
 Purpose and proposed outcomes: [Product Brief](product-brief.md). Observable acceptance criteria: [User Stories](user-stories.md). Unresolved or potentially incorrect behavior: [Requirements Review](requirements-review.md). The requirements below describe **observed implementation**, unless explicitly marked otherwise; they do not silently convert code into approved policy.
 
@@ -16,6 +16,8 @@ Purpose and proposed outcomes: [Product Brief](product-brief.md). Observable acc
 | FR-06 | Generate optional, cited cluster hypotheses with cancellation. | Successful clustering → eligible cluster history → validated model output; US-09. Relevant text goes to cloud inference; the UI discloses this. |
 | FR-07 | Undo/redo content changes, with exact graph snapshots and normal autosave. | Creates/deletes from FR-01/02; no viewport/selection history; US-10. |
 | FR-08 | Back up and replace the complete diagram using local, versioned JSON. | Settings → export live state or validate/confirm/persist one import; independent of AI; US-11. |
+| FR-09 | Review fixed two-calendar-month event counts and ranked downstream relationships. | Live graph → calendar phase → seven selectable bars/lists; no inference; US-12. |
+| FR-10 | Choose Light, Dark or System appearance independently of diagram content. | Settings → browser preference → shared UI theme; US-13. |
 
 Not implemented: visitor accounts, multiple-board management, shared editing, synchronization, cloud diagram storage, encrypted/automatic backups, persisted undo history, event editing, manual positioning or clinical assessment. There is no approved roadmap for these capabilities.
 
@@ -80,7 +82,7 @@ All-time clustering includes future-dated Mistakes. Its counts count records, no
 
 ### BR-09 — Comparison and recorded relationships
 
-Periods are fixed when the overview mounts. Let `end` be tomorrow's local calendar day; recent is `[end minus 2 calendar months, end)`, previous is `[recent start minus 2 calendar months, recent start)`. Each subtraction clamps to month end. On **9 November 2026**, these are **10 September–9 November** and **10 July–9 September**. Older/future events are excluded from period counts.
+The existing **Mistake overview → Recent progress** retains rolling periods, fixed when the overview mounts. Let `end` be tomorrow's local calendar day; recent is `[end minus 2 calendar months, end)`, previous is `[recent start minus 2 calendar months, recent start)`. Each subtraction clamps to month end. On **9 November 2026**, these are **10 September–9 November** and **10 July–9 September**. Older/future events are excluded from those period counts. The separate Analytics page follows BR-14 instead.
 
 “Recurring” means at least two recent cluster members. “New in comparison” means a recent occurrence and none in the preceding period, even if older history exists. Change is the absolute count difference, not a rate or proof of improvement. Upstream Action traces follow valid non-backward directed paths through intermediate nodes, allow older Actions, deduplicate Actions, and show one discovered path per Action. A path is an association, not causation.
 
@@ -102,11 +104,29 @@ Ordinary wheel and two-finger scrolling pan in both axes. The previous sign inve
 
 ### BR-13 — Portable local backup
 
-The bottom-right Settings gear contains only **Export Data** and **Import Data**, plus the required plaintext-backup privacy notice. Export includes the live diagram's pending unsaved edits in one versioned UTF-8 JSON serialization. It preserves event data, IDs, positions, layout metadata, ports and edge labels; durations/renderer defaults are recalculated. UI state, history, caches, credentials and temporary analytics are excluded. Native save-location selection is used where available, otherwise standard download; native cancellation does not download. No network/inference is used.
+The bottom-right Settings gear contains **Export Data**, **Import Data**, the required plaintext-backup privacy notice and **Appearance** under BR-15. Backup behavior is unchanged: export includes the live diagram's pending unsaved edits in one versioned UTF-8 JSON serialization. It preserves event data, IDs, positions, layout metadata, ports and edge labels; durations/renderer defaults are recalculated. UI state, appearance, panel widths, history, caches, credentials and temporary analytics are excluded. Native save-location selection is used where available, otherwise standard download; native cancellation does not download. No network/inference is used.
 
 Import reads/decodes/parses once, validates the whole file and prepares a graph in memory. Confirmation explicitly replaces rather than merges and clears prior history. Commit saves one complete localStorage snapshot before replacing the displayed diagram, invalidates older pending autosaves, and clears selection/highlights. Invalid, canceled or storage-failed imports leave current content and saved data intact; storage failure also preserves pending ordinary autosave/history. Success follows persistence, not merely file selection. No per-node saves or automatic AI analyses occur.
 
 Schema 1 supports current exact coordinates and known older layout adaptation. Essential unknown fields/versions, broken endpoints, duplicates, invalid types/dates/text/coordinates and unsupported relationships are rejected. Known historical Consequence → Mistake/Milestone/Success records require an explicit supported compatibility marker and remain recorded data; new links still obey current rules. The file limit is 25 MiB; browser storage may be smaller. See [Backup schema](backup-schema.md) for fields, compatibility and failure rules.
+
+### BR-14 — Fixed-phase Analytics page
+
+The whiteboard's **Analytics** button opens a read-only page, initially 60% chart / 40% list on desktop. A vertical divider supports mouse/touch dragging in either direction and keyboard Left/Right, Home/End. Minimum widths take precedence over the ratio: 320px chart and 280px details. Content wraps within resized panels. On screens up to 700px wide, panels stack and the divider is hidden. Width choice lasts only while this page is open; reopening starts at 60/40 subject to minimums. Resizing changes neither graph/history nor the autosave deadline. Back to whiteboard preserves graph content, viewport and history. **2 Months** is the only implemented tab; **6 Months**, **1 Year** and **Custom** are visible but disabled.
+
+Use the device-local date to select January–February, March–April, May–June, July–August, September–October or November–December. Internally use `[first odd-month day, first day after the even month)` against recorded calendar-day timestamps. The displayed range includes the even month's final day. Include every event in both complete months, even if future-dated relative to today; exclude other phases. Refresh an open page at local midnight or when returning to the tab. November 11 and December 12, 2026 both select November 1–December 31; January 1, 2027 selects January–February 2027.
+
+Seven bars show exact phase counts in whiteboard colors. Selecting a bar shows only that type's phase records with complete main text, date and optional Description; zero counts remain selectable with an empty message. Initially select Mistake. Other five types use simple chronological lists without rankings/gradients.
+
+For each phase Mistake, count distinct downstream Consequence nodes; for each phase Consequence, count distinct downstream Action nodes. Follow all recorded outgoing paths through intermediate types **across phase boundaries**. Deduplicate targets per starting node, exclude the start and unrelated nodes, ignore broken endpoint references, and guard cycles. Do not repair/filter historical recorded relationships using today's creation rules. Sort descending by count, then ascending event date and ID for ties. These counts express recorded associations, not severity or causation.
+
+Each ranked list has one continuous theme-aware red/orange gradient on its entire container, with no individual item gradients. Light mode retains the red/orange-to-light appearance; Dark uses darker shades with light text. Calculations use deterministic local JavaScript; page interactions do not invoke AI, mutate the graph or enter history/reset autosave. Existing rolling reports, connection rules and persistence remain unchanged.
+
+### BR-15 — Appearance preference
+
+Settings offers **Light**, **Dark** and **System**. Selection applies immediately across the board, grid, axes, arrows, highlights, dialogs, controls, overview and Analytics. Light retains the light palette; Dark changes UI surfaces/text/borders while preserving the seven node fills and readable node text. Chart fills keep their corresponding node colors, and ranked gradients adapt with the theme.
+
+System follows `prefers-color-scheme` at startup and on live system changes. Explicit Light/Dark override it. Default to System when no valid preference exists. Persist only the chosen mode under `trace.appearance.v1`, separate from diagram data, backups and history. Preference changes never trigger diagram autosave or reset a pending save. If preference storage fails, apply the mode for this session and report that it could not be saved; diagram persistence remains independent. No new inference or backend configuration is involved.
 
 ## Constraints and exceptions
 
@@ -128,6 +148,8 @@ Proposed success measures are in the brief; numerical targets remain open. Deplo
 - BR-07: [storage validation](../src/persistence.js), [save hook](../src/use-local-diagram.js); [autosave scenarios](../tests/browser/autosave.spec.js).
 - BR-11/12: [history](../src/diagram-history.js), [shortcuts/viewport](../src/main.jsx); [history tests](../tests/history.test.js), [interaction and legacy-data scenarios](../tests/browser/interaction-updates.spec.js).
 - BR-13: [backup codec](../src/backup.js), [settings](../src/SettingsDialog.jsx), [commit coordination](../src/use-local-diagram.js); [schema tests](../tests/backup.test.js), [backup browser tests](../tests/browser/backup.spec.js), [mobile/readability tests](../tests/browser/usability-updates.spec.js).
+- BR-14: [fixed phases and traversal](../src/phase-analytics.js), [page](../src/AnalyticsPage.jsx); [calculation tests](../tests/phase-analytics.test.js), [interaction tests](../tests/browser/phase-analytics.spec.js).
+- BR-14/15: [panel limits](../src/analytics-layout.js), [appearance preference](../src/appearance.js), [provider](../src/AppearanceProvider.jsx), [theme styles](../src/styles.css); [logic tests](../tests/appearance-layout.test.js), [mouse/touch/theme regressions](../tests/browser/appearance-layout.spec.js).
 - BR-08: [pipeline](../src/ollama.js), [grouping](../src/mistake-clusters.js), [cause gating](../src/behavior-patterns.js), [presets](../src/embedding-models.js); [clustering tests](../tests/clustering.test.js).
 - BR-09/10: [reports](../src/progress-analytics.js), [explanations](../src/progress-explanations.js), [UI](../src/ProgressAnalytics.jsx), [prompt](../shared/cluster-prompt.js); [report tests](../tests/progress.test.js), [explanation tests](../tests/cluster-explanations.test.js).
 - NFRs: [public Worker](../worker/site.js), [inference](../worker/index.js), [validation](../worker/input.js), [configuration](../wrangler.jsonc), [local transport](../src/local-ollama-chat.js); [backend tests](../tests/worker.test.js), [production scenarios](../tests/cloud-browser/production.spec.js).

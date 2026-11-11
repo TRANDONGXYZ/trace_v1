@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { MAX_BACKUP_BYTES, parseBackup, saveBackupFile } from './backup.js';
+import { useAppearance } from './AppearanceProvider.jsx';
 
 export function SettingsDialog({ getGraph, onImport, onClose }) {
+  const appearance = useAppearance();
   const dialog = useRef(null), file = useRef(null), request = useRef(0);
   const [candidate, setCandidate] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -45,6 +47,11 @@ export function SettingsDialog({ getGraph, onImport, onClose }) {
   };
   return <dialog ref={dialog} className="settings-dialog" onCancel={onClose} aria-labelledby="settings-title">
     <div className="dialog-heading"><h1 id="settings-title">Settings</h1><button type="button" className="close-dialog" aria-label="Close settings" onClick={onClose}>×</button></div>
+    <label htmlFor="appearance">Appearance</label>
+    <select id="appearance" value={appearance.mode} onChange={event => appearance.changeMode(event.target.value)}>
+      <option value="light">Light</option><option value="dark">Dark</option><option value="system">System</option>
+    </select>
+    {appearance.error && <p role="alert">{appearance.error}</p>}
     <p className="backup-privacy">Backups stay on your device. Exported JSON is <strong>not encrypted</strong> and may contain personal reflections; store it securely.</p>
     <div className="backup-actions">
       <button type="button" className="export-button" disabled={busy} onClick={exportData}>Export Data</button>

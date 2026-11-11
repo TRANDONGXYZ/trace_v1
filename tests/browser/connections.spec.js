@@ -90,7 +90,7 @@ test('double-click highlights every incoming path, excludes descendants, clears 
   await expect(nodes(page).nth(5)).not.toHaveClass(/chain-highlighted/);
   for (const edge of await page.locator('.react-flow__edge.chain-highlighted').all()) {
     await expect(edge.locator('.react-flow__edge-path')).toHaveCSS('stroke', 'rgb(36, 89, 203)');
-    await expect(edge.locator('marker path')).toHaveAttribute('fill', '#2459cb');
+    await expect(edge.locator('marker path')).toHaveCSS('fill', 'rgb(36, 89, 203)');
     await expect(edge.locator('..')).toHaveCSS('z-index', '1000');
   }
   await nodes(page).nth(1).click();

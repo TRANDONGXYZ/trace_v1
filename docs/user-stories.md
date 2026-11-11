@@ -1,6 +1,6 @@
 # Trace — User Stories and Acceptance Criteria
 
-**Status:** Acceptance baseline including local backup and mobile usability · **Reviewed:** 10 November 2026
+**Status:** Acceptance baseline including resizable analytics and appearance modes · **Reviewed:** 11 November 2026
 
 These stories consolidate observed capabilities. They are not PO approval of the implementation. Central business rules are defined once in the [PRD](prd.md#business-rules); criteria below reference those rules. **Review flags** point to unresolved exceptions in [Requirements Review](requirements-review.md).
 
@@ -160,7 +160,7 @@ As a diagram author, I want a portable local backup so I can protect my work or 
 
 Acceptance criteria:
 
-1. The bottom-right gear opens Settings with only Export Data, Import Data and the plaintext privacy notice; both actions are usable on desktop/mobile.
+1. The bottom-right gear opens Settings with Export Data, Import Data, the plaintext privacy notice and the separate Appearance setting. Both backup actions remain usable on desktop/mobile under BR-13.
 2. Export follows **BR-13**, including empty diagrams and pending unsaved changes. A download/native save contains complete recoverable data without UI/cache/history/secrets; original content and autosave timing remain unchanged.
 3. Selecting a valid file shows replacement confirmation and counts before any write or live change. Cancel leaves content intact. Invalid JSON/UTF-8, IDs, endpoints, constraints or unsupported versions show a clear error and no confirmation/partial import.
 4. Confirming performs one coordinated save/replace. An older pending autosave cannot overwrite the imported snapshot; no separate per-node writes occur. A storage failure preserves old live/saved content, pending autosave and history, and shows no success message.
@@ -169,3 +169,32 @@ Acceptance criteria:
 7. Import/export does not upload files or trigger inference/analytics. Native picker cancellation does not silently start a download. Performance is measured on representative sizes without promising universal latency.
 
 Evidence: [codec tests](../tests/backup.test.js), [atomicity/download/performance tests](../tests/browser/backup.spec.js), [schema contract](backup-schema.md).
+
+### US-12 — Review events and downstream relationships in a calendar phase
+
+As a person reviewing my recorded experiences, I want phase counts and ranked relationship lists so I can inspect mistakes associated with more consequences and consequences associated with more subsequent actions.
+
+Acceptance criteria:
+
+1. Analytics opens with the BR-14 initial split and four period tabs; only 2 Months is active. Dragging the divider left/right narrows/widens the chart and conversely resizes details; content remains usable within minimum widths. Keyboard controls work, narrow screens stack, and reopening resets the temporary split. Back and resizing preserve the whiteboard, viewport, history and pending save deadline.
+2. Both November 11 and December 12, 2026 show November 1–December 31; January 1, 2027 shows January 1–February 28. Device-local dates, leap days, year changes and an open page crossing midnight follow BR-14.
+3. All seven colored bars show exact phase counts, including recorded future dates within the phase. Clicking any bar filters the list to that type and phase, including zero-count empty states. Full text, dates and optional multiline descriptions remain readable.
+4. Mistake/Consequence lists use BR-14's distinct directed reachability metrics and descending sorting. Indirect and outside-phase targets count once despite converging paths; cycles terminate; starting/unrelated nodes do not count. Ties follow the documented date/ID rule.
+5. Each ranked list has one continuous theme-aware red/orange container gradient. Other types have no reachability metrics or gradients. Connection counts are not presented as severity or proof of causation.
+6. Opening/selecting/closing analytics neither changes diagram content nor calls inference. Unsaved live events appear immediately, and existing graph operations and rolling progress reports remain available unchanged.
+
+Evidence: [phase/traversal tests](../tests/phase-analytics.test.js), [page/browser tests](../tests/browser/phase-analytics.spec.js).
+
+### US-13 — Choose the website appearance
+
+As a person using Trace, I want a light, dark or system-matched appearance so I can choose a readable interface that suits my environment.
+
+Acceptance criteria:
+
+1. Settings offers Light, Dark and System under Appearance; selecting a mode updates the website immediately without a reload, following BR-15. Backup actions retain their existing behavior.
+2. System follows both initial and live operating-system/browser preference changes. Explicit Light/Dark remain unchanged when the system switches.
+3. Reload restores the selected mode from its separate key. Missing/invalid preferences default to System. A failed preference write applies the mode for this session and shows a truthful warning.
+4. Board/grid/axes, arrows/highlights, all dialogs, overview, Analytics, controls and gradients use the selected theme. All seven node fills remain identifiable with readable text; selected nodes and highlighted arrows remain visible.
+5. Changing appearance does not alter diagram content, enter history, trigger diagram saves or reset a pending debounce. Content undo/redo leaves the chosen appearance unchanged.
+
+Evidence: [preference/layout tests](../tests/appearance-layout.test.js), [theme/resizing/browser scenarios](../tests/browser/appearance-layout.spec.js).
