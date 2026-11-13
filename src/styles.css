@@ -154,8 +154,34 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--focus); out
 .phase-event-list li { padding: 16px; border-bottom: 1px solid var(--rank-border); overflow-wrap: anywhere; }
 .phase-event-list strong, .phase-event-list time, .phase-reachable-count { display: block; margin-bottom: 6px; }
 .phase-event-list p { white-space: pre-wrap; margin-bottom: 0; }
+.reaction-analysis { margin-top: 24px; padding-top: 8px; border-top: 1px solid var(--soft-border); }
+.reaction-analysis h3, .reaction-journey h3 { font-size: 15px; }
+.reaction-cases { list-style: none; padding: 0; display: grid; gap: 10px; }
+.reaction-case { display: block; width: 100%; padding: 12px; text-align: left; overflow-wrap: anywhere; }
+.reaction-case[aria-pressed="true"] { border-color: var(--accent); outline: 1px solid var(--accent); background: var(--highlight-surface); }
+.reaction-case-heading { display: flex; justify-content: space-between; align-items: start; gap: 12px; }
+.reaction-case-heading strong { flex-shrink: 0; }
+.reaction-summary { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.reaction-scale { display: block; margin: 8px; }
+.reaction-duration { display: block; position: relative; height: 20px; }
+.reaction-duration-line { position: absolute; height: 2px; left: 0; right: 0; top: 9px; background: var(--edge); }
+.consequence-marker, .action-marker { position: absolute; width: 12px; height: 12px; top: 50%; transform: translate(-50%, -50%); border-radius: 50%; }
+.consequence-marker { left: 0; }
+.action-marker { left: 100%; }
+.zero-day .consequence-marker { width: 18px; height: 18px; }
+.zero-day .action-marker { width: 8px; height: 8px; }
+.reaction-dates { display: block; font-size: 12px; margin-top: 6px; }
+.reaction-total { font-size: 24px; }
+.reaction-journey { position: sticky; top: 0; max-height: calc(100dvh - 40px); overflow: auto; overflow-wrap: anywhere; }
+.recorded-journey { list-style: none; padding: 0; }
+.recorded-journey li { padding: 12px 0; border-bottom: 1px solid var(--soft-border); overflow-wrap: anywhere; }
+.journey-event-label { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.journey-marker { display: inline-block; width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.journey-description, .journey-main-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.journey-gap, .journey-missing-description { color: var(--muted); font-size: 12px; }
 @media (max-width: 900px) { .keyboard-hint { display: none; } }
 @media (max-width: 700px) { .phase-columns { grid-template-columns: minmax(0, 1fr); } .phase-analytics { padding: 16px; } .phase-bars { font-size: 11px; gap: 2px; } }
 @media (max-width: 700px) { .phase-divider { display: none; } }
+@media (max-width: 700px) { .reaction-journey { position: static; max-height: none; overflow: visible; } }
 @media (max-width: 600px) { .empty-hint { white-space: normal; width: 240px; left: 56%; } .keyboard-hint { display: none; } }
 @media (pointer: coarse), (max-width: 600px) { .create-submit { display: block; width: 100%; margin-top: 16px; } }

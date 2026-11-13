@@ -1,6 +1,6 @@
 # Trace — Product Requirements Document
 
-**Status:** Current-state baseline including resizable analytics and appearance modes · **Reviewed:** 11 November 2026
+**Status:** Current-state baseline including Reaction Time Analysis · **Reviewed:** 13 November 2026
 
 Purpose and proposed outcomes: [Product Brief](product-brief.md). Observable acceptance criteria: [User Stories](user-stories.md). Unresolved or potentially incorrect behavior: [Requirements Review](requirements-review.md). The requirements below describe **observed implementation**, unless explicitly marked otherwise; they do not silently convert code into approved policy.
 
@@ -18,6 +18,7 @@ Purpose and proposed outcomes: [Product Brief](product-brief.md). Observable acc
 | FR-08 | Back up and replace the complete diagram using local, versioned JSON. | Settings → export live state or validate/confirm/persist one import; independent of AI; US-11. |
 | FR-09 | Review fixed two-calendar-month event counts and ranked downstream relationships. | Live graph → calendar phase → seven selectable bars/lists; no inference; US-12. |
 | FR-10 | Choose Light, Dark or System appearance independently of diagram content. | Settings → browser preference → shared UI theme; US-13. |
+| FR-11 | Review time from a Consequence to its first completed recorded Action and inspect the actual journey. | FR-09's phase/layout + directed graph + device-local day → measured/unmeasured cases; US-14. |
 
 Not implemented: visitor accounts, multiple-board management, shared editing, synchronization, cloud diagram storage, encrypted/automatic backups, persisted undo history, event editing, manual positioning or clinical assessment. There is no approved roadmap for these capabilities.
 
@@ -118,6 +119,8 @@ Use the device-local date to select January–February, March–April, May–Jun
 
 Seven bars show exact phase counts in whiteboard colors. Selecting a bar shows only that type's phase records with complete main text, date and optional Description; zero counts remain selectable with an empty message. Initially select Mistake. Other five types use simple chronological lists without rankings/gradients.
 
+Reaction Time Analysis sits below the chart in the same left panel. Selecting a reaction case replaces the existing right-panel list with that case's details; selecting any chart bar restores its type list. The most recent selection wins. No additional columns, popup or page are introduced; the existing divider, themes and narrow-screen stacking remain.
+
 For each phase Mistake, count distinct downstream Consequence nodes; for each phase Consequence, count distinct downstream Action nodes. Follow all recorded outgoing paths through intermediate types **across phase boundaries**. Deduplicate targets per starting node, exclude the start and unrelated nodes, ignore broken endpoint references, and guard cycles. Do not repair/filter historical recorded relationships using today's creation rules. Sort descending by count, then ascending event date and ID for ties. These counts express recorded associations, not severity or causation.
 
 Each ranked list has one continuous theme-aware red/orange gradient on its entire container, with no individual item gradients. Light mode retains the red/orange-to-light appearance; Dark uses darker shades with light text. Calculations use deterministic local JavaScript; page interactions do not invoke AI, mutate the graph or enter history/reset autosave. Existing rolling reports, connection rules and persistence remain unchanged.
@@ -127,6 +130,20 @@ Each ranked list has one continuous theme-aware red/orange gradient on its entir
 Settings offers **Light**, **Dark** and **System**. Selection applies immediately across the board, grid, axes, arrows, highlights, dialogs, controls, overview and Analytics. Light retains the light palette; Dark changes UI surfaces/text/borders while preserving the seven node fills and readable node text. Chart fills keep their corresponding node colors, and ranked gradients adapt with the theme.
 
 System follows `prefers-color-scheme` at startup and on live system changes. Explicit Light/Dark override it. Default to System when no valid preference exists. Persist only the chosen mode under `trace.appearance.v1`, separate from diagram data, backups and history. Preference changes never trigger diagram autosave or reset a pending save. If preference storage fails, apply the mode for this session and report that it could not be saved; diagram persistence remains independent. No new inference or backend configuration is involved.
+
+### BR-16 — Time to First Recorded Action
+
+Include Consequences inside the current fixed phase whose recorded calendar date is no later than the device-local today. For each, follow outgoing links across the whole graph and choose the reachable Action with the earliest date satisfying **Consequence date ≤ Action date ≤ today**. Calendar-day differences use the recorded UTC calendar dates, not local elapsed hours. Same-day responses are **0 days**. Chart counts under BR-14 still include the whole phase, including future records.
+
+Reaction journeys ignore broken references, invalid dates/types and backward-dated links so each displayed path is both an actual directed path and chronological. Same-date cycles and duplicate paths terminate through visited IDs. Existing creation rules/data and BR-14's general reachability rankings are unchanged. Equal-date Actions use ascending stable ID order; the journey uses a fewest-edge path found by BFS, with neighbors ordered by date then ID for deterministic alternatives.
+
+Measured cases sort by descending days, then Consequence date and ID. Each selectable row shows shortened Consequence text, both dates, exact days and orange/blue markers. Bar lengths share one linear scale within the measured list; zero-day markers coincide as an orange ring/blue center and explicitly say Same day. Unmeasured cases have **null**, not zero, duration and appear separately under **No Recorded Follow-up Action**. A qualifying future Action is identified as future-dated, never completed. Future Consequences are excluded from both groups.
+
+Details show full original type/date/text/Description for the Consequence, chosen Action and every intermediate event on the selected path, with per-step day gaps and node colors. Missing descriptions and follow-ups use neutral messages. Trace neither judges longer times as worse nor infers a reason for the interval or a decision date; recorded wording is shown without deciding whether it explains the delay.
+
+Calculations share a graph index with existing phase analytics and are memoized by graph content, phase and local calendar day. Case/bar selection, panel resizing, theme changes and board pan/zoom do not traverse the graph again or save derived statistics. Local midnight/focus refreshes completion eligibility even within the same phase. No new fields, inference, persistence or graph mutations are introduced.
+
+Only the current phase is selectable in the UI. The calculator accepts an explicit phase, and the December 28 → January 3 six-day example is verified with a November–December phase and an as-of date after January 3; historical-phase navigation is not added in this iteration.
 
 ## Constraints and exceptions
 
@@ -150,6 +167,7 @@ Proposed success measures are in the brief; numerical targets remain open. Deplo
 - BR-13: [backup codec](../src/backup.js), [settings](../src/SettingsDialog.jsx), [commit coordination](../src/use-local-diagram.js); [schema tests](../tests/backup.test.js), [backup browser tests](../tests/browser/backup.spec.js), [mobile/readability tests](../tests/browser/usability-updates.spec.js).
 - BR-14: [fixed phases and traversal](../src/phase-analytics.js), [page](../src/AnalyticsPage.jsx); [calculation tests](../tests/phase-analytics.test.js), [interaction tests](../tests/browser/phase-analytics.spec.js).
 - BR-14/15: [panel limits](../src/analytics-layout.js), [appearance preference](../src/appearance.js), [provider](../src/AppearanceProvider.jsx), [theme styles](../src/styles.css); [logic tests](../tests/appearance-layout.test.js), [mouse/touch/theme regressions](../tests/browser/appearance-layout.spec.js).
+- BR-16: [shared graph index](../src/recorded-graph.js), [reaction calculations](../src/reaction-time.js), [list/journey](../src/ReactionTimeAnalysis.jsx); [calculation tests](../tests/reaction-time.test.js), [UI regressions](../tests/browser/reaction-time.spec.js).
 - BR-08: [pipeline](../src/ollama.js), [grouping](../src/mistake-clusters.js), [cause gating](../src/behavior-patterns.js), [presets](../src/embedding-models.js); [clustering tests](../tests/clustering.test.js).
 - BR-09/10: [reports](../src/progress-analytics.js), [explanations](../src/progress-explanations.js), [UI](../src/ProgressAnalytics.jsx), [prompt](../shared/cluster-prompt.js); [report tests](../tests/progress.test.js), [explanation tests](../tests/cluster-explanations.test.js).
 - NFRs: [public Worker](../worker/site.js), [inference](../worker/index.js), [validation](../worker/input.js), [configuration](../wrangler.jsonc), [local transport](../src/local-ollama-chat.js); [backend tests](../tests/worker.test.js), [production scenarios](../tests/cloud-browser/production.spec.js).

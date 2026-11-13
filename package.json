@@ -13,8 +13,9 @@
     "check:worker": "wrangler deploy --dry-run",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
-    "test": "node --test tests/model.test.js tests/history.test.js tests/layout-restoration.test.js tests/backup.test.js tests/clustering.test.js tests/progress.test.js tests/phase-analytics.test.js tests/appearance-layout.test.js tests/cluster-explanations.test.js tests/local-chat.test.js tests/worker.test.js tests/cloud-client.test.js",
+    "test": "node --test tests/model.test.js tests/history.test.js tests/dev-launcher.test.js tests/layout-restoration.test.js tests/backup.test.js tests/clustering.test.js tests/progress.test.js tests/phase-analytics.test.js tests/reaction-time.test.js tests/appearance-layout.test.js tests/cluster-explanations.test.js tests/local-chat.test.js tests/worker.test.js tests/cloud-client.test.js",
     "test:cloud": "node tests/cloud-live.mjs",
+    "test:startup": "node tests/local-startup.mjs",
     "test:ollama": "node --test tests/ollama.test.js",
     "test:browser": "playwright test",
     "test:production": "playwright test --config playwright.cloud.config.js"

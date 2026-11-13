@@ -1,6 +1,6 @@
 # Trace — User Stories and Acceptance Criteria
 
-**Status:** Acceptance baseline including resizable analytics and appearance modes · **Reviewed:** 11 November 2026
+**Status:** Acceptance baseline including Reaction Time Analysis · **Reviewed:** 13 November 2026
 
 These stories consolidate observed capabilities. They are not PO approval of the implementation. Central business rules are defined once in the [PRD](prd.md#business-rules); criteria below reference those rules. **Review flags** point to unresolved exceptions in [Requirements Review](requirements-review.md).
 
@@ -198,3 +198,18 @@ Acceptance criteria:
 5. Changing appearance does not alter diagram content, enter history, trigger diagram saves or reset a pending debounce. Content undo/redo leaves the chosen appearance unchanged.
 
 Evidence: [preference/layout tests](../tests/appearance-layout.test.js), [theme/resizing/browser scenarios](../tests/browser/appearance-layout.spec.js).
+
+### US-14 — Review recorded response intervals and their event context
+
+As a person reviewing my experiences, I want to find longer Consequence-to-Action intervals and read the connected records so I can recall what happened without an inferred explanation.
+
+Acceptance criteria:
+
+1. Reaction Time Analysis appears below the existing chart in the left panel, with no extra columns/page/popup. Selecting a case uses the whole existing right panel; selecting a chart bar restores its type list. Latest selection is visibly identified.
+2. BR-16 filters observed Consequences and eligible completed Actions, follows direct/indirect outgoing paths beyond phase boundaries, and chooses the earliest recorded Action. Unrelated, earlier and future Actions cannot produce a completed measurement. Cycles/merges do not duplicate records or loop indefinitely.
+3. Same-day cases show 0 days; month/year/leap boundaries use calendar days. The December 28 → January 3 calculation is six days when that phase is explicitly supplied after completion. Current UI phase limits remain documented.
+4. Measured rows sort descending, show dates/exact days, and use one duration scale with orange/blue markers and a clear zero-day representation. Unmeasured/future-only cases are separate and never show a false zero. Future Consequences are omitted.
+5. Details preserve full original text and multiline Descriptions, types, dates and colors, including intermediate nodes from one real chronological path. BR-16's Action/path tie-breakers are deterministic. Missing fields/follow-ups show neutral messages; no cause, decision date or severity judgment is invented.
+6. Local midnight and graph edits/undo/redo update eligibility/results. Selection and resizing neither modify content/history nor trigger saves/inference. Existing chart rankings, divider, Light/Dark/mobile views, backups and whiteboard operations remain functional.
+
+Evidence: [calculation/path tests](../tests/reaction-time.test.js), [interaction/date/appearance tests](../tests/browser/reaction-time.spec.js).

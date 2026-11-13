@@ -1,12 +1,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { NODE_APPEARANCE } from './node-types.js';
 import { formatDate } from './model.js';
-import { buildPhaseAnalytics, calendarPhase, phaseLabel } from './phase-analytics.js';
+import { buildPhaseAnalytics, calendarPhase, localCalendarDay, phaseLabel } from './phase-analytics.js';
 import { INITIAL_SPLIT, DIVIDER_SPACE, clampSplit, splitLimits } from './analytics-layout.js';
+import { indexRecordedGraph } from './recorded-graph.js';
+import { buildReactionTimeReport } from './reaction-time.js';
+import { ReactionTimeAnalysis, ReactionJourney } from './ReactionTimeAnalysis.jsx';
 
 export function AnalyticsPage({ nodes, edges, onClose }) {
-  const [phase, setPhase] = useState(() => calendarPhase());
+  const [calendar, setCalendar] = useState(() => { const now = new Date(); return { phase: calendarPhase(now), today: localCalendarDay(now) }; });
+  const { phase, today } = calendar;
   const [selectedKind, setSelectedKind] = useState('Mistake');
+  const [selectedCaseId, setSelectedCaseId] = useState(null);
   const heading = useRef(null);
   const columns = useRef(null), drag = useRef(null);
   const [split, setSplit] = useState(INITIAL_SPLIT);
@@ -24,7 +29,11 @@ export function AnalyticsPage({ nodes, edges, onClose }) {
     let timer;
     const refresh = () => {
       const now = new Date(), next = calendarPhase(now);
-      setPhase(current => current.start === next.start && current.end === next.end ? current : next);
+      const day = localCalendarDay(now);
+      setCalendar(current => {
+        const samePhase = current.phase.start === next.start && current.phase.end === next.end;
+        return samePhase && current.today === day ? current : { phase: samePhase ? current.phase : next, today: day };
+      });
       clearTimeout(timer);
       timer = setTimeout(refresh, new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1).getTime() - now.getTime());
     };
@@ -33,7 +42,10 @@ export function AnalyticsPage({ nodes, edges, onClose }) {
     document.addEventListener('visibilitychange', refresh);
     return () => { clearTimeout(timer); window.removeEventListener('focus', refresh); document.removeEventListener('visibilitychange', refresh); };
   }, []);
-  const report = useMemo(() => buildPhaseAnalytics(nodes, edges, phase), [nodes, edges, phase]);
+  const graphIndex = useMemo(() => indexRecordedGraph(nodes, edges), [nodes, edges]);
+  const report = useMemo(() => buildPhaseAnalytics(nodes, edges, phase, graphIndex), [nodes, edges, phase, graphIndex]);
+  const reactions = useMemo(() => buildReactionTimeReport(nodes, edges, phase, today, graphIndex), [nodes, edges, phase, today, graphIndex]);
+  const activeCase = reactions.byConsequenceId.get(selectedCaseId) ?? null;
   const selected = report.categories.find(category => category.kind === selectedKind);
   const maximum = Math.max(1, ...report.categories.map(category => category.count));
   return <main className={`phase-analytics${resizing ? ' is-resizing' : ''}`} aria-labelledby="analytics-title">
@@ -55,7 +67,7 @@ export function AnalyticsPage({ nodes, edges, onClose }) {
           <ul className="phase-bars" aria-label="Event count chart">
             {report.categories.map(category => <li key={category.kind}>
               <button type="button" className="phase-bar" aria-label={`${category.kind}: ${category.count} events`}
-                aria-pressed={selectedKind === category.kind} onClick={() => setSelectedKind(category.kind)}>
+                aria-pressed={!activeCase && selectedKind === category.kind} onClick={() => { setSelectedKind(category.kind); setSelectedCaseId(null); }}>
                 <span className="phase-bar-count">{category.count}</span>
                 <span className="phase-bar-track" aria-hidden="true"><span className="phase-bar-fill"
                   style={{ height: `${category.count / maximum * 100}%`, backgroundColor: NODE_APPEARANCE[category.kind].fill }} /></span>
@@ -64,6 +76,7 @@ export function AnalyticsPage({ nodes, edges, onClose }) {
             </li>)}
           </ul>
           <p>Select a bar to view its recorded events.</p>
+          <ReactionTimeAnalysis report={reactions} selectedId={activeCase?.consequence.id} onSelect={setSelectedCaseId} />
         </div>
       </section>
       <div className="phase-divider" role="separator" aria-label="Resize analytics panels" aria-orientation="vertical" tabIndex={0}
@@ -91,6 +104,7 @@ export function AnalyticsPage({ nodes, edges, onClose }) {
           setSplit(clampSplit(next, width));
         }} />
       <section id="phase-detail" className="phase-detail" aria-labelledby="phase-list-title">
+        {activeCase ? <ReactionJourney entry={activeCase} /> : <>
         <h2 id="phase-list-title">{selected.kind} ({selected.count})</h2>
         {selected.targetKind && <p>Ranked by distinct reachable {selected.targetKind} nodes across the entire diagram, including other phases.
           {selected.kind === 'Mistake' ? ' This is a recorded connection count, not a measure of severity.' : ''}</p>}
@@ -103,6 +117,7 @@ export function AnalyticsPage({ nodes, edges, onClose }) {
           </li>)}
         </ol>
         {!selected.count && <p role="status">No {selected.kind} events in this phase.</p>}
+        </>}
       </section>
     </div>
   </main>;

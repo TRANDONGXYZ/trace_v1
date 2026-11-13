@@ -69,9 +69,19 @@ npx wrangler login
 npm run dev
 ```
 
-`start.cmd` runs this workflow and opens the browser. Vite uses `http://127.0.0.1:5173` or the next free loopback port. The local API runs at port 8787 using `worker/wrangler.jsonc`, which intentionally has no assets requirement and allows loopback origins. It imports the same `worker/site.js` and AI implementation as production. Its remote AI binding consumes the same account's free AI allowance. Ctrl+C stops the owned development processes.
+`start.cmd` starts the frontend and attempts the optional local AI service, then opens the browser. Vite uses `http://127.0.0.1:5173` or the next free loopback port. The local API runs at port 8787 using `worker/wrangler.jsonc`, which intentionally has no assets requirement and allows loopback origins. It imports the same `worker/site.js` and AI implementation as production. Its remote AI binding consumes the same account's free AI allowance. Ctrl+C stops the owned development processes.
 
 To run separately: `npm run dev:worker` and `npm run dev:frontend` in two terminals. Optional former local-only inference remains available with `npm run dev:ollama`. Public visitors never require Ollama or your laptop.
+
+### Windows blocks `workerd.exe` / `spawn UNKNOWN`
+
+On November 13, the Wrangler log traced `spawn UNKNOWN` to Miniflare starting its ProxyWorker runtime. Windows Code Integrity events 3077/3033 identified `node_modules/@cloudflare/workerd-windows-64/bin/workerd.exe`; the installed file was unsigned, while the portable Node executable had a valid signature. Smart App Control was enforcing its policy. This is a native-runtime startup failure, not a Reaction Time calculation failure. [Microsoft explains the signing/reputation checks](https://support.microsoft.com/en-us/windows/security/threat-malware-protection/smart-app-control-frequently-asked-questions).
+
+The launcher now checks active Smart App Control and recent enforced-block records against the exact installed runtime's SHA-256 flat hash. A matching block skips Wrangler without launching the blocked file. The inspection is read-only; it does not disable protection, unblock files or add exclusions. Unknown/unreadable diagnostics fall back to normal startup, but any Worker failure leaves Vite running. Frontend failure and Ctrl+C still stop owned processes.
+
+The launcher conservatively avoids an already blocked binary while the policy remains active. If Windows later trusts it, run `npm run dev:worker` separately; a changed runtime hash is evaluated afresh. Local cloud AI is unavailable while Windows blocks the helper; use the existing `npm run dev:ollama` mode for Ollama analysis. Production still runs on Cloudflare and uses the original configuration/URL.
+
+Verification: 142 unit/security tests plus a headless Edge check against the corrected launcher under the active Windows policy (creation/connections, reaction analysis, unavailable-AI handling, autosave/reload). The reusable smoke test blocks inference requests. To repeat: start `npm run dev -- --port 5197 --strictPort`, then `npm run test:startup` in another terminal. `TRACE_STARTUP_TEST_URL` can select another local test address. Earlier browser suites used Ollama-mode Vite; Wrangler's deploy dry run packages code without exercising the blocked native runtime.
 
 ## Deploy or publish updates
 
@@ -90,7 +100,7 @@ Check the log ends with deployment of **trace**, then open the original URL. For
 
 ## Verification
 
-The November 11 Analytics/appearance updates, including resizable panels, Light/Dark/System and preceding backup/usability, interaction/rule and taller-card changes, are **local only, not deployed**. They passed 127 unit/security tests, 76 whiteboard browser tests, 5 production-bundle tests with mocked AI, production build and Wrangler dry run. Build reports a non-blocking 500 kB chunk-size warning. These features require no additional API, inference, configuration or dependency; appearance uses its own browser preference key. Backup performance measurements and limits are in [Backup schema](docs/backup-schema.md). The Worker name/URL, bindings and AI logic are unchanged. Existing short-card layouts adapt on restore; a layout marker is persisted only with a genuine content save. Deploy only when ready; the November 8 version below remains the last deployment performed in this session.
+The November 13 Reaction Time Analysis update is **local only; this task did not deploy it**. It passed 136 unit/security tests, 84 whiteboard browser tests, 5 production-bundle tests with mocked AI, production build and Wrangler dry run. Build retains a non-blocking 500 kB chunk-size warning. The feature derives calendar-day intervals and recorded journeys in the browser without new API calls, persistence fields, dependencies or configuration. Existing backup, history, theme and analytics regressions pass. Backup performance samples and limits remain in [Backup schema](docs/backup-schema.md). Worker name/URL, bindings and AI logic are unchanged. The November 8 entry below is the earlier recorded CLI deployment, not verification of the current live site's revision.
 
 Verified on November 8, 2026: production build and Wrangler dry run succeeded; **93 unit/security tests, 42 whiteboard browser regressions, and all 8 public production checks passed**. The public checks ran against the original `trace.trandongxzy.workers.dev` URL and included real Vietnamese inference, cancellation and API guards. Deployed Worker version: `36dd2e85-6c36-43fe-b8bd-7a29e625baca`. Local API startup and loopback validation also passed. This was a direct CLI deployment, not a claim that a new GitHub build has already run.
 

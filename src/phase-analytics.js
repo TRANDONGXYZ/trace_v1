@@ -1,4 +1,5 @@
 // Fixed calendar phases are separate from the existing rolling progress report.
+import { indexRecordedGraph } from './recorded-graph.js';
 export const PHASE_KINDS = ['Mistake', 'Consequence', 'Action', 'Milestone', 'Goal', 'Blocked', 'Success'];
 const dateLabel = new Intl.DateTimeFormat('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: 'UTC' });
 
@@ -8,17 +9,10 @@ export function calendarPhase(now = new Date()) {
 }
 
 export const phaseLabel = phase => `${dateLabel.format(phase.start)} – ${dateLabel.format(phase.end - 1)}`;
+export const localCalendarDay = (now = new Date()) => Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
 
-export function buildPhaseAnalytics(nodes, edges, phase = calendarPhase()) {
-  const byId = new Map(nodes.map(node => [node.id, node]));
-  const outgoing = new Map();
-  for (const edge of edges) {
-    // Broken references cannot form a path. Do not reinterpret or modify
-    // historical recorded links using today's interactive creation rules.
-    if (!byId.has(edge.source) || !byId.has(edge.target)) continue;
-    if (!outgoing.has(edge.source)) outgoing.set(edge.source, []);
-    outgoing.get(edge.source).push(edge.target);
-  }
+export function buildPhaseAnalytics(nodes, edges, phase = calendarPhase(), index = indexRecordedGraph(nodes, edges)) {
+  const { byId, outgoing } = index;
   const distinctReachable = (startId, kind) => {
     const seen = new Set([startId]), queue = [startId];
     let count = 0;
