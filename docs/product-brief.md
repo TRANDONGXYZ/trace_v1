@@ -1,6 +1,6 @@
 # Trace — Product Brief
 
-**Status:** Product draft including Consequence Chain Analysis · **Reviewed:** 14 November 2026
+**Status:** Product draft including Achievement Path Analysis · **Reviewed:** 14 November 2026
 
 This package describes the current source, not an approved roadmap or proof that every behavior is correct. **Observed** means implemented in the reviewed checkout; **Proposed** means suggested for approval; **Assumption/Open** means evidence or a decision is missing. Tests corroborate behavior but do not establish user need or product correctness.
 
@@ -25,6 +25,7 @@ Trace is a personal timeline whiteboard for recording mistakes, actions and outc
 - Review a fixed two-calendar-month phase and inspect recorded downstream consequences/actions.
 - Review recorded Consequence-to-Action intervals and the original connected events without inferred explanations.
 - Find longer recorded Consequence chains and inspect their sequence, duration and original descriptions.
+- Inspect all recorded Actions and intermediate events leading to a Milestone or Success, including converging branches.
 - Distinguish recorded facts from uncertain AI interpretations.
 
 These are needs to validate, not reported research findings.
@@ -32,6 +33,8 @@ These are needs to validate, not reported research findings.
 ## Scope and limits
 
 **Observed:** seven event types with two-line text and subtle shape-preserving corner rounding; keyboard or touch-button creation; automatic date-based layout; permitted same-date connections and Consequence chains; incoming-chain highlighting; individual-node/edge deletion; session undo/redo; 3-second autosave; local JSON backup/restore; mistake clustering; rolling progress comparisons; optional cluster explanations/cancellation. The deterministic Analytics page shows fixed two-calendar-month counts, downstream rankings, Reaction Time Analysis and Consequence Chain Analysis. Chain depth, total reachable Consequences and duration remain separate; selecting a Mistake shows one longest recorded sequence with full event details. Measured reaction intervals lead to full recorded journeys; missing/future follow-ups remain separate. Its desktop panels start at 60/40 and resize by dragging; narrow screens stack them. Only the current two-month phase is available; other period tabs remain inactive. Settings provides Export Data, Import Data and Light/Dark/System appearance. The theme applies throughout the website and is saved separately from diagrams. Import validates the complete file, confirms replacement and persists it atomically before changing the live diagram. The production origin remains **https://trace.trandongxzy.workers.dev/** and the single-Worker architecture is unchanged. See [DEPLOYMENT.md](../DEPLOYMENT.md). This update is not deployed.
+
+**Observed addition:** Achievement Path Analysis lists current-phase Milestones/Successes by distinct related Action count. A chronological Action list and read-only layered graph retain all upstream events and internal arrows, including branches and merges across phases. Selecting an Action highlights its recorded routes; this does not establish contribution, necessity or causation. Analytical layout and interactions never modify the whiteboard.
 
 **Limits:** one active diagram per profile/origin; no login, cloud backup, synchronization, collaboration, event editing or manual node dragging. Backups are manual, unencrypted JSON files, limited to 25 MiB and available browser storage. Import replaces rather than merges and clears prior undo history. Ordinary history remains session-only. Native save-location selection depends on browser support; other browsers download the file. Large diagrams can briefly pause processing/rendering. Core and backup operations require no inference; relevant text goes to Cloudflare only for existing AI analysis. Clustering is approximate and explanations are hypotheses, not diagnoses or verified causes.
 

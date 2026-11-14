@@ -189,9 +189,25 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--focus); out
 .journey-marker { display: inline-block; width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
 .journey-description, .journey-main-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .journey-gap, .journey-missing-description { color: var(--muted); font-size: 12px; }
+.achievement-analysis { margin-top: 24px; padding-top: 8px; border-top: 1px solid var(--soft-border); }
+.achievement-cases { list-style: none; padding: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.achievement-case { display: block; width: 100%; padding: 12px; text-align: left; overflow-wrap: anywhere; }
+.achievement-case[aria-pressed="true"], .achievement-actions [aria-pressed="true"] { border-color: var(--accent); outline: 1px solid var(--accent); background: var(--highlight-surface); }
+.achievement-details { position: sticky; top: 0; max-height: calc(100dvh - 40px); overflow: auto; overflow-wrap: anywhere; }
+.achievement-details h3 { font-size: 15px; }
+.achievement-actions { padding-left: 20px; }
+.achievement-actions li { margin-bottom: 8px; }
+.achievement-actions button { display: block; width: 100%; padding: 10px; text-align: left; overflow-wrap: anywhere; }
+.achievement-actions button span { display: block; margin-top: 6px; font-size: 12px; }
+.achievement-selected-event { margin: 12px 0; padding: 12px; border: 1px solid var(--border); }
+.achievement-graph { height: 480px; width: 100%; min-width: 0; margin-top: 12px; border: 1px solid var(--border); }
+.achievement-graph .react-flow__handle { visibility: hidden; pointer-events: none; }
+.achievement-graph .achievement-dimmed { opacity: 0.25; }
+.achievement-graph .react-flow__attribution { bottom: 0; }
+.achievement-graph .react-flow__controls button { width: 44px; background: var(--surface); border-color: var(--border); fill: var(--text); }
 @media (max-width: 900px) { .keyboard-hint { display: none; } }
 @media (max-width: 700px) { .phase-columns { grid-template-columns: minmax(0, 1fr); } .phase-analytics { padding: 16px; } .phase-bars { font-size: 11px; gap: 2px; } }
 @media (max-width: 700px) { .phase-divider { display: none; } }
-@media (max-width: 700px) { .reaction-journey, .chain-journey { position: static; max-height: none; overflow: visible; } }
+@media (max-width: 700px) { .reaction-journey, .chain-journey, .achievement-details { position: static; max-height: none; overflow: visible; } }
 @media (max-width: 600px) { .empty-hint { white-space: normal; width: 240px; left: 56%; } .keyboard-hint { display: none; } }
 @media (pointer: coarse), (max-width: 600px) { .create-submit { display: block; width: 100%; margin-top: 16px; } }

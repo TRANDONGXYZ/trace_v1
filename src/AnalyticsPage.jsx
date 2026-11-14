@@ -8,6 +8,8 @@ import { buildReactionTimeReport } from './reaction-time.js';
 import { ReactionTimeAnalysis, ReactionJourney } from './ReactionTimeAnalysis.jsx';
 import { buildConsequenceChainReport } from './consequence-chains.js';
 import { ConsequenceChainAnalysis, ConsequenceChainJourney } from './ConsequenceChainAnalysis.jsx';
+import { buildAchievementReport, extractAchievementSubgraph } from './achievement-paths.js';
+import { AchievementPathAnalysis, AchievementDetails } from './AchievementPathAnalysis.jsx';
 
 export function AnalyticsPage({ nodes, edges, onClose }) {
   const [calendar, setCalendar] = useState(() => { const now = new Date(); return { phase: calendarPhase(now), today: localCalendarDay(now) }; });
@@ -51,8 +53,11 @@ export function AnalyticsPage({ nodes, edges, onClose }) {
     const totals = new Map(report.categories.find(category => category.kind === 'Mistake').events.map(row => [row.node.id, row.reachableCount]));
     return buildConsequenceChainReport(nodes, edges, phase, graphIndex, totals);
   }, [nodes, edges, phase, graphIndex, report]);
+  const achievements = useMemo(() => buildAchievementReport(nodes, edges, phase, graphIndex), [nodes, edges, phase, graphIndex]);
   const activeCase = detailSelection?.type === 'reaction' ? reactions.byConsequenceId.get(detailSelection.id) ?? null : null;
   const activeChain = detailSelection?.type === 'chain' ? chains.byMistakeId.get(detailSelection.id) ?? null : null;
+  const activeAchievement = detailSelection?.type === 'achievement' ? achievements.byAchievementId.get(detailSelection.id) ?? null : null;
+  const achievementGraph = useMemo(() => activeAchievement ? extractAchievementSubgraph(activeAchievement.achievement.id, nodes, edges, graphIndex) : null, [activeAchievement, nodes, edges, graphIndex]);
   const chainPath = useMemo(() => activeChain ? chains.pathFor(activeChain.mistake.id) : [], [chains, activeChain]);
   const selected = report.categories.find(category => category.kind === selectedKind);
   const maximum = Math.max(1, ...report.categories.map(category => category.count));
@@ -75,7 +80,7 @@ export function AnalyticsPage({ nodes, edges, onClose }) {
           <ul className="phase-bars" aria-label="Event count chart">
             {report.categories.map(category => <li key={category.kind}>
               <button type="button" className="phase-bar" aria-label={`${category.kind}: ${category.count} events`}
-                aria-pressed={!activeCase && !activeChain && selectedKind === category.kind} onClick={() => { setSelectedKind(category.kind); setDetailSelection(null); }}>
+                aria-pressed={!activeCase && !activeChain && !activeAchievement && selectedKind === category.kind} onClick={() => { setSelectedKind(category.kind); setDetailSelection(null); }}>
                 <span className="phase-bar-count">{category.count}</span>
                 <span className="phase-bar-track" aria-hidden="true"><span className="phase-bar-fill"
                   style={{ height: `${category.count / maximum * 100}%`, backgroundColor: NODE_APPEARANCE[category.kind].fill }} /></span>
@@ -86,6 +91,7 @@ export function AnalyticsPage({ nodes, edges, onClose }) {
           <p>Select a bar to view its recorded events.</p>
           <ReactionTimeAnalysis report={reactions} selectedId={activeCase?.consequence.id} onSelect={id => setDetailSelection({ type: 'reaction', id })} />
           <ConsequenceChainAnalysis report={chains} selectedId={activeChain?.mistake.id} onSelect={id => setDetailSelection({ type: 'chain', id })} />
+          <AchievementPathAnalysis report={achievements} selectedId={activeAchievement?.achievement.id} onSelect={id => setDetailSelection({ type: 'achievement', id })} />
         </div>
       </section>
       <div className="phase-divider" role="separator" aria-label="Resize analytics panels" aria-orientation="vertical" tabIndex={0}
@@ -113,7 +119,7 @@ export function AnalyticsPage({ nodes, edges, onClose }) {
           setSplit(clampSplit(next, width));
         }} />
       <section id="phase-detail" className="phase-detail" aria-labelledby="phase-list-title">
-        {activeChain ? <ConsequenceChainJourney entry={activeChain} path={chainPath} /> : activeCase ? <ReactionJourney entry={activeCase} /> : <>
+        {achievementGraph ? <AchievementDetails key={achievementGraph.achievement.id} graph={achievementGraph} /> : activeChain ? <ConsequenceChainJourney entry={activeChain} path={chainPath} /> : activeCase ? <ReactionJourney entry={activeCase} /> : <>
         <h2 id="phase-list-title">{selected.kind} ({selected.count})</h2>
         {selected.targetKind && <p>Ranked by distinct reachable {selected.targetKind} nodes across the entire diagram, including other phases.
           {selected.kind === 'Mistake' ? ' This is a recorded connection count, not a measure of severity.' : ''}</p>}

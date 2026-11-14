@@ -1,6 +1,6 @@
 # Trace — Product Requirements Document
 
-**Status:** Current-state baseline including Consequence Chain Analysis · **Reviewed:** 14 November 2026
+**Status:** Current-state baseline including Achievement Path Analysis · **Reviewed:** 14 November 2026
 
 Purpose and proposed outcomes: [Product Brief](product-brief.md). Observable acceptance criteria: [User Stories](user-stories.md). Unresolved or potentially incorrect behavior: [Requirements Review](requirements-review.md). The requirements below describe **observed implementation**, unless explicitly marked otherwise; they do not silently convert code into approved policy.
 
@@ -20,6 +20,7 @@ Purpose and proposed outcomes: [Product Brief](product-brief.md). Observable acc
 | FR-10 | Choose Light, Dark or System appearance independently of diagram content. | Settings → browser preference → shared UI theme; US-13. |
 | FR-11 | Review time from a Consequence to its first completed recorded Action and inspect the actual journey. | FR-09's phase/layout + directed graph + device-local day → measured/unmeasured cases; US-14. |
 | FR-12 | Rank phase Mistakes by consecutive Consequence depth and inspect one longest chain, distinct total and duration. | FR-09's phase/layout and shared graph totals; independent of AI and reaction completion eligibility; US-15. |
+| FR-13 | Select phase achievements and inspect all related Actions and recorded upstream paths. | FR-09's shared phase/layout + reverse graph traversal → complete read-only subgraph; US-16. |
 
 Not implemented: visitor accounts, multiple-board management, shared editing, synchronization, cloud diagram storage, encrypted/automatic backups, persisted undo history, event editing, manual positioning or clinical assessment. There is no approved roadmap for these capabilities.
 
@@ -120,7 +121,7 @@ Use the device-local date to select January–February, March–April, May–Jun
 
 Seven bars show exact phase counts in whiteboard colors. Selecting a bar shows only that type's phase records with complete main text, date and optional Description; zero counts remain selectable with an empty message. Initially select Mistake. Other five types use simple chronological lists without rankings/gradients.
 
-The left panel contains the period tabs, event-count chart, Reaction Time Analysis and then Consequence Chain Analysis. Selecting a reaction case or chain Mistake replaces the existing right-panel list with its details; selecting any chart bar restores its type list. The most recent selection across all three views wins and is visibly selected. No additional columns, popup or page are introduced; the existing divider, themes and narrow-screen stacking remain.
+The left panel contains the period tabs, event-count chart, Reaction Time Analysis, Consequence Chain Analysis and then Achievement Path Analysis. Selecting a reaction case, chain Mistake or achievement replaces the existing right-panel content with its details; selecting any chart bar restores its type list. The most recent selection across all four views wins and is visibly selected. No additional columns, popup or page are introduced; the existing divider, themes and narrow-screen stacking remain.
 
 For each phase Mistake, count distinct downstream Consequence nodes; for each phase Consequence, count distinct downstream Action nodes. Follow all recorded outgoing paths through intermediate types **across phase boundaries**. Deduplicate targets per starting node, exclude the start and unrelated nodes, ignore broken endpoint references, and guard cycles. Do not repair/filter historical recorded relationships using today's creation rules. Sort descending by count, then ascending event date and ID for ties. These counts express recorded associations, not severity or causation.
 
@@ -164,6 +165,24 @@ Ignore broken references during traversal. Preserve structural depth and actual 
 
 Share indexed adjacency and existing totals; compute acyclic tails iteratively and reconstruct only the selected path. Memoize by graph content and phase boundaries, not selection, resizing, appearance or viewport changes. No derived metrics enter saved data, backups, undo history or AI requests. Historical-phase navigation and displaying every tied path remain outside scope.
 
+### BR-18 — Achievement Path Analysis
+
+List Milestone and Success roots in the entire current two-month phase, including future phase dates. Traverse incoming recorded arrows across the **whole graph**, regardless of type, date or phase; do not apply today's connection-creation rules to historical records. Ignore broken endpoint references and visit each node ID once, including in cycles.
+
+- **Related Actions:** all distinct upstream Action IDs with a directed route to the selected achievement.
+- **Direct Actions:** related Actions with an original edge entering that achievement.
+- **Indirect-only Actions:** related Actions without that direct edge. An Action with both direct and indirect routes is Direct, counted once.
+
+Sort achievements by descending related count, most recent date, then ascending stable ID. Show type/color, shortened text, date and count. The right panel shows the achievement's complete original text/type/date/Description and total, plus all related Actions sorted by ascending recorded date and ID. Each Action identifies Direct or Indirect-only; selection reveals its full original Description and highlights its routes. Do not assign scores, effectiveness, necessity or causal weights.
+
+Extract the selected achievement and **every ancestor**, including non-Actions, once. Retain every original edge with both endpoints in that set, with its ID and direction. No shortest-path choice, intermediate-node removal, synthetic connection or node collapse is permitted. Descendants/unrelated branches outside the ancestor set are excluded.
+
+Below the list, show a separate read-only React Flow graph using the existing card shapes/colors. Deterministic layers place the achievement at the bottom and acyclic ancestors above it, with non-overlapping node boxes. Cyclic components are processed safely for layout while retaining their individual nodes/arrows; intra-cycle arrows can run sideways/upward, with an explicit notice. Layers express connections, not chronological order. Analytical positions and vertical viewing ports are temporary and never replace stored whiteboard positions/handles.
+
+Pan, pinch/Ctrl-wheel zoom, zoom buttons and node selection are supported. Initial fit never shrinks below 0.65; large graphs remain navigable instead of fitting every label at tiny scale. Selecting an Action highlights all reachable nodes/arrows inside the extracted ancestor graph, stopping at the achievement, without enumerating paths. Dim other branches without hiding/deleting them. Cyclic highlighting expresses directed reachability, not an asserted loop-free event sequence. Non-Action selection shows full recorded fields without path highlighting. Clear selection or click the graph background to restore the full view.
+
+No node dragging, creation, editing, deletion, edge connection/reconnection or content keyboard shortcuts operate on this analytical graph. Its provider/viewport, selection and highlights are isolated from the whiteboard. Empty Action/connection cases show neutral messages and retain any original subgraph. Memoize counts by graph/phase and extraction/layout by selected achievement/graph; panning, resizing, theme and node selection do not rerun layout. No derived data, history entries, saves, inference, dependencies or backend changes are introduced. No expanded graph view or additional period tabs are implemented.
+
 ## Constraints and exceptions
 
 | ID | Observed constraint / failure behavior |
@@ -188,6 +207,7 @@ Proposed success measures are in the brief; numerical targets remain open. Deplo
 - BR-14/15: [panel limits](../src/analytics-layout.js), [appearance preference](../src/appearance.js), [provider](../src/AppearanceProvider.jsx), [theme styles](../src/styles.css); [logic tests](../tests/appearance-layout.test.js), [mouse/touch/theme regressions](../tests/browser/appearance-layout.spec.js).
 - BR-16: [shared graph index](../src/recorded-graph.js), [reaction calculations](../src/reaction-time.js), [list/journey](../src/ReactionTimeAnalysis.jsx); [calculation tests](../tests/reaction-time.test.js), [UI regressions](../tests/browser/reaction-time.spec.js).
 - BR-17: [chain calculation](../src/consequence-chains.js), [ranking/timeline](../src/ConsequenceChainAnalysis.jsx); [graph/date/tie tests](../tests/consequence-chains.test.js), [selection/layout/safety tests](../tests/browser/consequence-chains.spec.js).
+- BR-18: [upstream extraction/highlights](../src/achievement-paths.js), [layered layout](../src/achievement-layout.js), [analytical graph](../src/AchievementPathAnalysis.jsx), [shared event card](../src/EventCard.jsx); [graph tests](../tests/achievement-paths.test.js), [browser regressions](../tests/browser/achievement-paths.spec.js).
 - BR-08: [pipeline](../src/ollama.js), [grouping](../src/mistake-clusters.js), [cause gating](../src/behavior-patterns.js), [presets](../src/embedding-models.js); [clustering tests](../tests/clustering.test.js).
 - BR-09/10: [reports](../src/progress-analytics.js), [explanations](../src/progress-explanations.js), [UI](../src/ProgressAnalytics.jsx), [prompt](../shared/cluster-prompt.js); [report tests](../tests/progress.test.js), [explanation tests](../tests/cluster-explanations.test.js).
 - NFRs: [public Worker](../worker/site.js), [inference](../worker/index.js), [validation](../worker/input.js), [configuration](../wrangler.jsonc), [local transport](../src/local-ollama-chat.js); [backend tests](../tests/worker.test.js), [production scenarios](../tests/cloud-browser/production.spec.js).

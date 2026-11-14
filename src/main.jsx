@@ -10,26 +10,18 @@ import { useLocalDiagram } from './use-local-diagram.js';
 import { MistakeOverview } from './MistakeOverview.jsx';
 import { SettingsDialog } from './SettingsDialog.jsx';
 import { AnalyticsPage } from './AnalyticsPage.jsx';
+import { EventCard } from './EventCard.jsx';
 import { AppearanceProvider } from './AppearanceProvider.jsx';
 import { initializeAppearance } from './appearance.js';
-import { NODE_WIDTH, axisAnchors, canConnectNodes, connectNodes, createEvent, deleteNode, deleteEdge, formatDate, formatMonth, monthTicks, parseDate, projectTime, upstreamChain } from './model.js';
+import { NODE_WIDTH, axisAnchors, canConnectNodes, connectNodes, createEvent, deleteNode, deleteEdge, formatMonth, monthTicks, parseDate, projectTime, upstreamChain } from './model.js';
 
 function EventNode({ data, selected }) {
   const appearance = NODE_APPEARANCE[data.kind];
-  const shape = appearance.path;
-  const height = nodeHeight({ data });
-  const details = [data.kind, data.mistake, formatDate(data.time), data.description].filter(Boolean).join('\n');
-  return <div className={`event-node nopan ${data.kind.toLowerCase()} ${selected ? 'is-selected' : ''}`} style={{ height }} title={details} data-shape={appearance.shape}>
-    <svg className="node-geometry" viewBox={`0 0 160 ${height}`} aria-hidden="true">
-      <path className="node-shape" d={shape} fill={appearance.fill} stroke={appearance.stroke} />
-      {appearance.detail && <path className="node-detail" d={appearance.detail} stroke={appearance.stroke} />}
-      {(selected || data.chainHighlighted) && <path className="selection-outline" d={shape} />}
-    </svg>
-    <div className="node-content"><strong>{data.kind}</strong><span className="node-mistake">{data.mistake}</span><span className="node-time">{formatDate(data.time)}</span></div>
+  return <EventCard data={data} selected={selected}>
     <Handle id="top" type="source" position={Position.Top} className="nodrag nopan" aria-label="Top connection point" />
     <Handle id="right" type="source" position={Position.Right} style={{ right: 160 - appearance.right }} className="nodrag nopan" aria-label="Right connection point" />
     <Handle id="left" type="source" position={Position.Left} style={{ left: appearance.left }} className="nodrag nopan" aria-label="Left connection point" />
-  </div>;
+  </EventCard>;
 }
 
 function TimeEdge({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data }) {

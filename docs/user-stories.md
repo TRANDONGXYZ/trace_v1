@@ -1,6 +1,6 @@
 # Trace — User Stories and Acceptance Criteria
 
-**Status:** Acceptance baseline including Consequence Chain Analysis · **Reviewed:** 14 November 2026
+**Status:** Acceptance baseline including Achievement Path Analysis · **Reviewed:** 14 November 2026
 
 These stories consolidate observed capabilities. They are not PO approval of the implementation. Central business rules are defined once in the [PRD](prd.md#business-rules); criteria below reference those rules. **Review flags** point to unresolved exceptions in [Requirements Review](requirements-review.md).
 
@@ -205,7 +205,7 @@ As a person reviewing my experiences, I want to find longer Consequence-to-Actio
 
 Acceptance criteria:
 
-1. Reaction Time Analysis appears below the existing chart in the left panel, with no extra columns/page/popup. Selecting a case uses the whole existing right panel; selecting a chart bar restores its type list. Latest selection across chart, reaction and chain cases is visibly identified under BR-14.
+1. Reaction Time Analysis appears below the existing chart in the left panel, with no extra columns/page/popup. Selecting a case uses the whole existing right panel; selecting a chart bar restores its type list. Latest selection across chart, reaction, chain and achievement cases is visibly identified under BR-14.
 2. BR-16 filters observed Consequences and eligible completed Actions, follows direct/indirect outgoing paths beyond phase boundaries, and chooses the earliest recorded Action. Unrelated, earlier and future Actions cannot produce a completed measurement. Cycles/merges do not duplicate records or loop indefinitely.
 3. Same-day cases show 0 days; month/year/leap boundaries use calendar days. The December 28 → January 3 calculation is six days when that phase is explicitly supplied after completion. Current UI phase limits remain documented.
 4. Measured rows sort descending, show dates/exact days, and use one duration scale with orange/blue markers and a clear zero-day representation. Unmeasured/future-only cases are separate and never show a false zero. Future Consequences are omitted.
@@ -220,7 +220,7 @@ As a person reviewing my mistakes, I want to find longer connected Consequence s
 
 Acceptance criteria:
 
-1. Consequence Chain Analysis appears immediately below Reaction Time in the same left panel. Selecting a Mistake highlights its row and uses the existing right panel; later chart/reaction selections replace it without changing the diagram.
+1. Consequence Chain Analysis appears immediately below Reaction Time in the same left panel. Selecting a Mistake highlights its row and uses the existing right panel; later chart/reaction/achievement selections replace it without changing the diagram.
 2. BR-17 includes only current-phase Mistake roots, including future phase records, while traversing Consequences beyond the phase. A December 28 → January 3 → January 7 chain has depth 2 and duration 10 days.
 3. Direct chains have depths 0/1/2/3 as appropriate; parallel branches do not sum. Every non-Consequence type stops depth. Distinct totals still follow indirect paths and count merged/repeated targets once, matching the Mistake category list.
 4. Sorting and selected-path ties follow BR-17 deterministically, including shuffled input order. Duration uses the selected deepest chain's final event, even when a shorter branch ends later. Calendar calculations handle same-day, month/year and leap boundaries.
@@ -230,3 +230,20 @@ Acceptance criteria:
 8. Graph edits and undo/redo update results. Selecting, resizing and changing appearance create no content saves/history or inference requests. Existing chart/reaction interactions, themes, persistence and whiteboard operations remain functional.
 
 Evidence: [metric/path/scale tests](../tests/consequence-chains.test.js), [UI and regression tests](../tests/browser/consequence-chains.spec.js).
+
+### US-16 — Inspect all recorded paths to an achievement
+
+As a person reviewing achievements, I want to select a Milestone or Success and inspect its upstream Actions and branches so I can understand my recorded history without losing converging relationships or assuming causation.
+
+Acceptance criteria:
+
+1. Achievement Path Analysis appears below Consequence Chain Analysis, in the existing left panel. BR-18 filters only achievement roots by phase and sorts them by count, newest date and stable ID. Future phase achievements remain included; older-phase Actions still contribute.
+2. Direct and indirect Actions through every node type are counted once per stable ID. The complete extracted graph retains all ancestor nodes and every original internal edge ID/direction, including merges and alternate routes, with no artificial connections or missing intermediate events.
+3. The existing right panel shows complete achievement fields/count and a chronological related-Action list. Direct versus Indirect-only follows BR-18; an Action with both routes appears once as Direct. Selecting an Action reveals full original fields, including multiline Description.
+4. A deterministic layered graph places the achievement at the bottom. Representative acyclic layouts have no overlapping node boxes and retain all branches; cyclic records terminate safely and remain visible with an explicit layout notice. Recorded dates and whiteboard coordinates are unchanged.
+5. Selecting an Action highlights all its recorded routes to the achievement, including both sides of a split/merge; other branches remain visible but dim. Selecting another Action replaces the highlight. Selecting a non-Action shows its complete fields; clear/background restores the full graph.
+6. Pan, zoom controls, Ctrl-wheel and supported pinch allow graph inspection in the current panel. Large graphs keep a readable initial scale; resizing, Light/Dark and mobile stacking remain usable. Selection does not rearrange nodes.
+7. Creation, deletion, dragging, editing and reconnecting are unavailable in this analytical graph. Navigation/selection/highlighting neither change the board viewport/content nor create saves, history entries or AI requests. Existing whiteboard operations, backups and all Analytics detail selectors remain functional.
+8. Zero Actions/connections show neutral messages with original achievement information. Missing descriptions are explicit. Higher counts are never labeled as more valuable, necessary or more effective Actions.
+
+Evidence: [traversal/layout tests](../tests/achievement-paths.test.js), [complete graph/highlight/read-only/mobile tests](../tests/browser/achievement-paths.spec.js).
