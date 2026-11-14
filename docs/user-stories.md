@@ -1,6 +1,6 @@
 # Trace — User Stories and Acceptance Criteria
 
-**Status:** Acceptance baseline including Reaction Time Analysis · **Reviewed:** 13 November 2026
+**Status:** Acceptance baseline including Consequence Chain Analysis · **Reviewed:** 14 November 2026
 
 These stories consolidate observed capabilities. They are not PO approval of the implementation. Central business rules are defined once in the [PRD](prd.md#business-rules); criteria below reference those rules. **Review flags** point to unresolved exceptions in [Requirements Review](requirements-review.md).
 
@@ -205,7 +205,7 @@ As a person reviewing my experiences, I want to find longer Consequence-to-Actio
 
 Acceptance criteria:
 
-1. Reaction Time Analysis appears below the existing chart in the left panel, with no extra columns/page/popup. Selecting a case uses the whole existing right panel; selecting a chart bar restores its type list. Latest selection is visibly identified.
+1. Reaction Time Analysis appears below the existing chart in the left panel, with no extra columns/page/popup. Selecting a case uses the whole existing right panel; selecting a chart bar restores its type list. Latest selection across chart, reaction and chain cases is visibly identified under BR-14.
 2. BR-16 filters observed Consequences and eligible completed Actions, follows direct/indirect outgoing paths beyond phase boundaries, and chooses the earliest recorded Action. Unrelated, earlier and future Actions cannot produce a completed measurement. Cycles/merges do not duplicate records or loop indefinitely.
 3. Same-day cases show 0 days; month/year/leap boundaries use calendar days. The December 28 → January 3 calculation is six days when that phase is explicitly supplied after completion. Current UI phase limits remain documented.
 4. Measured rows sort descending, show dates/exact days, and use one duration scale with orange/blue markers and a clear zero-day representation. Unmeasured/future-only cases are separate and never show a false zero. Future Consequences are omitted.
@@ -213,3 +213,20 @@ Acceptance criteria:
 6. Local midnight and graph edits/undo/redo update eligibility/results. Selection and resizing neither modify content/history nor trigger saves/inference. Existing chart rankings, divider, Light/Dark/mobile views, backups and whiteboard operations remain functional.
 
 Evidence: [calculation/path tests](../tests/reaction-time.test.js), [interaction/date/appearance tests](../tests/browser/reaction-time.spec.js).
+
+### US-15 — Inspect longer recorded Consequence chains
+
+As a person reviewing my mistakes, I want to find longer connected Consequence sequences and read their original events so I can understand the recorded progression and its duration.
+
+Acceptance criteria:
+
+1. Consequence Chain Analysis appears immediately below Reaction Time in the same left panel. Selecting a Mistake highlights its row and uses the existing right panel; later chart/reaction selections replace it without changing the diagram.
+2. BR-17 includes only current-phase Mistake roots, including future phase records, while traversing Consequences beyond the phase. A December 28 → January 3 → January 7 chain has depth 2 and duration 10 days.
+3. Direct chains have depths 0/1/2/3 as appropriate; parallel branches do not sum. Every non-Consequence type stops depth. Distinct totals still follow indirect paths and count merged/repeated targets once, matching the Mistake category list.
+4. Sorting and selected-path ties follow BR-17 deterministically, including shuffled input order. Duration uses the selected deepest chain's final event, even when a shorter branch ends later. Calendar calculations handle same-day, month/year and leap boundaries.
+5. A depth of N displays exactly N equal-size orange segments and its numeric value. Zero has no filled segment. Large depths scroll inside resized/mobile panels without widening the page.
+6. Details show the three separate metrics and full original text/date/Description for the root and every event on the actual selected path. Missing descriptions are explicit. Depth zero shows the neutral no-chain message and no duration, even if the total is positive.
+7. Legacy cycles terminate; cycle-affected depth/duration are unavailable with a warning while totals remain available. Backward/invalid selected dates retain recorded order and structural depth but show no duration. No graph repair or invented severity/causality occurs.
+8. Graph edits and undo/redo update results. Selecting, resizing and changing appearance create no content saves/history or inference requests. Existing chart/reaction interactions, themes, persistence and whiteboard operations remain functional.
+
+Evidence: [metric/path/scale tests](../tests/consequence-chains.test.js), [UI and regression tests](../tests/browser/consequence-chains.spec.js).

@@ -1,6 +1,6 @@
 # Trace — Product Requirements Document
 
-**Status:** Current-state baseline including Reaction Time Analysis · **Reviewed:** 13 November 2026
+**Status:** Current-state baseline including Consequence Chain Analysis · **Reviewed:** 14 November 2026
 
 Purpose and proposed outcomes: [Product Brief](product-brief.md). Observable acceptance criteria: [User Stories](user-stories.md). Unresolved or potentially incorrect behavior: [Requirements Review](requirements-review.md). The requirements below describe **observed implementation**, unless explicitly marked otherwise; they do not silently convert code into approved policy.
 
@@ -19,6 +19,7 @@ Purpose and proposed outcomes: [Product Brief](product-brief.md). Observable acc
 | FR-09 | Review fixed two-calendar-month event counts and ranked downstream relationships. | Live graph → calendar phase → seven selectable bars/lists; no inference; US-12. |
 | FR-10 | Choose Light, Dark or System appearance independently of diagram content. | Settings → browser preference → shared UI theme; US-13. |
 | FR-11 | Review time from a Consequence to its first completed recorded Action and inspect the actual journey. | FR-09's phase/layout + directed graph + device-local day → measured/unmeasured cases; US-14. |
+| FR-12 | Rank phase Mistakes by consecutive Consequence depth and inspect one longest chain, distinct total and duration. | FR-09's phase/layout and shared graph totals; independent of AI and reaction completion eligibility; US-15. |
 
 Not implemented: visitor accounts, multiple-board management, shared editing, synchronization, cloud diagram storage, encrypted/automatic backups, persisted undo history, event editing, manual positioning or clinical assessment. There is no approved roadmap for these capabilities.
 
@@ -119,7 +120,7 @@ Use the device-local date to select January–February, March–April, May–Jun
 
 Seven bars show exact phase counts in whiteboard colors. Selecting a bar shows only that type's phase records with complete main text, date and optional Description; zero counts remain selectable with an empty message. Initially select Mistake. Other five types use simple chronological lists without rankings/gradients.
 
-Reaction Time Analysis sits below the chart in the same left panel. Selecting a reaction case replaces the existing right-panel list with that case's details; selecting any chart bar restores its type list. The most recent selection wins. No additional columns, popup or page are introduced; the existing divider, themes and narrow-screen stacking remain.
+The left panel contains the period tabs, event-count chart, Reaction Time Analysis and then Consequence Chain Analysis. Selecting a reaction case or chain Mistake replaces the existing right-panel list with its details; selecting any chart bar restores its type list. The most recent selection across all three views wins and is visibly selected. No additional columns, popup or page are introduced; the existing divider, themes and narrow-screen stacking remain.
 
 For each phase Mistake, count distinct downstream Consequence nodes; for each phase Consequence, count distinct downstream Action nodes. Follow all recorded outgoing paths through intermediate types **across phase boundaries**. Deduplicate targets per starting node, exclude the start and unrelated nodes, ignore broken endpoint references, and guard cycles. Do not repair/filter historical recorded relationships using today's creation rules. Sort descending by count, then ascending event date and ID for ties. These counts express recorded associations, not severity or causation.
 
@@ -145,6 +146,24 @@ Calculations share a graph index with existing phase analytics and are memoized 
 
 Only the current phase is selectable in the UI. The calculator accepts an explicit phase, and the December 28 → January 3 six-day example is verified with a November–December phase and an as-of date after January 3; historical-phase navigation is not added in this iteration.
 
+### BR-17 — Consequence Chain Analysis
+
+Include starting Mistakes in the entire current fixed phase, including future dates within it. Consequences may lie in any phase or after today. This is structural analysis of recorded connections, unlike BR-16's completed-response filter. Use three separate metrics:
+
+| Metric | Definition |
+| --- | --- |
+| Chain Depth | Maximum count of consecutive Consequence nodes after the starting Mistake. Stop each path at its first non-Consequence, including another Mistake. Parallel branches do not add depth. No direct Consequence means depth 0. |
+| Total Consequences | Distinct reachable Consequences through any recorded directed path, including intermediate types; reuse BR-14's count. Merges/cycles never double-count. This can be positive even at depth 0. |
+| Chain Duration | Calendar days from the Mistake to the last Consequence on the selected longest chain. Depth 0 has no duration; a valid same-day chain has 0 days. |
+
+Choose the deepest chain, then the latest final Consequence date, then ascending lexicographic stable node-ID path order. Duration never uses a later event from a shorter/unrelated branch. Rank Mistakes by descending depth, descending total, ascending Mistake date and ID. One fixed-size orange segment represents each depth level, with the exact numeric value; large bars scroll inside the panel. Depth 0 has no filled segments.
+
+Selection shows complete Mistake text/date and the three labeled metrics, then the Mistake and every Consequence on the chosen path in actual arrow order. Show full original text, dates and available multiline Descriptions, with red Mistake/orange Consequence markers. Missing descriptions and depth-zero cases have neutral messages; never invent a chain or interpret depth as severity, hidden cause or proof of causation.
+
+Ignore broken references during traversal. Preserve structural depth and actual path order for invalid/backward legacy dates, explicitly warn, and withhold duration rather than taking an absolute value. Invalid endpoint dates rank below valid dates when selecting equal-depth chains. If a consecutive Consequence cycle is reachable from a root, depth/duration are **unavailable**, not zero; retain the distinct total and original Mistake without claiming a longest chain. Sort these unavailable cases after computed depths. This conservative cycle policy avoids arbitrary cutoffs or exponential simple-path searches; unrelated cycles beyond non-Consequence nodes do not invalidate depth.
+
+Share indexed adjacency and existing totals; compute acyclic tails iteratively and reconstruct only the selected path. Memoize by graph content and phase boundaries, not selection, resizing, appearance or viewport changes. No derived metrics enter saved data, backups, undo history or AI requests. Historical-phase navigation and displaying every tied path remain outside scope.
+
 ## Constraints and exceptions
 
 | ID | Observed constraint / failure behavior |
@@ -168,6 +187,7 @@ Proposed success measures are in the brief; numerical targets remain open. Deplo
 - BR-14: [fixed phases and traversal](../src/phase-analytics.js), [page](../src/AnalyticsPage.jsx); [calculation tests](../tests/phase-analytics.test.js), [interaction tests](../tests/browser/phase-analytics.spec.js).
 - BR-14/15: [panel limits](../src/analytics-layout.js), [appearance preference](../src/appearance.js), [provider](../src/AppearanceProvider.jsx), [theme styles](../src/styles.css); [logic tests](../tests/appearance-layout.test.js), [mouse/touch/theme regressions](../tests/browser/appearance-layout.spec.js).
 - BR-16: [shared graph index](../src/recorded-graph.js), [reaction calculations](../src/reaction-time.js), [list/journey](../src/ReactionTimeAnalysis.jsx); [calculation tests](../tests/reaction-time.test.js), [UI regressions](../tests/browser/reaction-time.spec.js).
+- BR-17: [chain calculation](../src/consequence-chains.js), [ranking/timeline](../src/ConsequenceChainAnalysis.jsx); [graph/date/tie tests](../tests/consequence-chains.test.js), [selection/layout/safety tests](../tests/browser/consequence-chains.spec.js).
 - BR-08: [pipeline](../src/ollama.js), [grouping](../src/mistake-clusters.js), [cause gating](../src/behavior-patterns.js), [presets](../src/embedding-models.js); [clustering tests](../tests/clustering.test.js).
 - BR-09/10: [reports](../src/progress-analytics.js), [explanations](../src/progress-explanations.js), [UI](../src/ProgressAnalytics.jsx), [prompt](../shared/cluster-prompt.js); [report tests](../tests/progress.test.js), [explanation tests](../tests/cluster-explanations.test.js).
 - NFRs: [public Worker](../worker/site.js), [inference](../worker/index.js), [validation](../worker/input.js), [configuration](../wrangler.jsonc), [local transport](../src/local-ollama-chat.js); [backend tests](../tests/worker.test.js), [production scenarios](../tests/cloud-browser/production.spec.js).

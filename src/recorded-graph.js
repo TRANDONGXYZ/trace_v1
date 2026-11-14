@@ -10,3 +10,17 @@ export function indexRecordedGraph(nodes, edges) {
   }
   return { byId, outgoing };
 }
+
+export function countReachableKind({ byId, outgoing }, startId, kind) {
+  if (!byId.has(startId)) return 0;
+  const seen = new Set([startId]), queue = [startId];
+  let count = 0;
+  for (let position = 0; position < queue.length; position++) {
+    for (const id of outgoing.get(queue[position]) ?? []) {
+      if (seen.has(id)) continue;
+      seen.add(id); queue.push(id);
+      if (byId.get(id)?.data?.kind === kind) count++;
+    }
+  }
+  return count;
+}

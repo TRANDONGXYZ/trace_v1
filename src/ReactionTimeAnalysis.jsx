@@ -38,8 +38,9 @@ export function ReactionTimeAnalysis({ report, selectedId, onSelect }) {
   </section>;
 }
 
-function RecordedEvent({ node }) {
-  return <><div className="journey-event-label"><span className="journey-marker" style={{ backgroundColor: NODE_APPEARANCE[node.data.kind].fill }} aria-hidden="true" /><strong>{node.data.kind}</strong> <time dateTime={new Date(node.data.time).toISOString().slice(0, 10)}>{formatDate(node.data.time)}</time></div>
+export function RecordedEvent({ node }) {
+  const day = recordedCalendarDay(node.data.time), validDate = Number.isFinite(day);
+  return <><div className="journey-event-label"><span className="journey-marker" style={{ backgroundColor: NODE_APPEARANCE[node.data.kind].fill }} aria-hidden="true" /><strong>{node.data.kind}</strong> <time dateTime={validDate ? new Date(day).toISOString().slice(0, 10) : undefined}>{validDate ? formatDate(day) : 'Invalid recorded date'}</time></div>
     <p className="journey-main-text">{node.data.mistake}</p>
     {node.data.description ? <p className="journey-description">{node.data.description}</p> : <p className="journey-missing-description">No Description recorded.</p>}</>;
 }
